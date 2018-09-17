@@ -31,6 +31,7 @@ import datetime
 import logging
 import logging.config
 import netifaces
+import re
 import signal
 import socket
 import sys
@@ -176,6 +177,19 @@ if ((options.network_id != None) and ((options.network_id < 0) or (options.netwo
    sys.stderr.write('ERROR: Invalid network identifier!\n')
    sys.exit(1)
 
+if options.network_id:
+   # Assuming hostname is "nne<NNN>" with N of 1 to 3 digits!
+   hostname = socket.gethostname()
+   match    = re.search('^(nne)(\d{1,3})$', hostname)
+   if match:
+      nodeNumber = int(match.group(2))
+      sport      = 10000 + (10 * nodeNumber) + options.network_id
+   else:
+      sys.stderr.write('ERROR: Hostname is not "nne<NNN>"; try without network identifier!\n')
+      sys.exit(1)
+else:
+   sport = 0
+
 
 # ====== Initialise logger ==================================================
 MBBM_LOGGING_CONF = {
@@ -230,11 +244,6 @@ lock      = threading.Lock()
 
 signal.signal(signal.SIGINT,  handler)
 signal.signal(signal.SIGTERM, handler)
-
-if options.network_id:
-   sport = 10000 + 10 * int(socket.gethostname()[3:]) + options.network_id
-else:
-   sport = 0
 
 
 # ====== Main loop ==========================================================
