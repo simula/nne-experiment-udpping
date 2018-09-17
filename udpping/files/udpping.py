@@ -37,9 +37,9 @@ import logging, logging.config
 
 
 # ###### Constants ##########################################################
-RTT_VALID_MIN = 0     # Minimum valid RTT (in s)
-RTT_VALID_MAX = 300   # Maximum valid RTT (in s)
-PAYLOAD_MAX   = 2048  # Maximum payload size (in B)
+RTT_VALID_MIN = 0      # Minimum valid RTT (in s)
+RTT_VALID_MAX = 300    # Maximum valid RTT (in s)
+PAYLOAD_MAX   = 2048   # Maximum payload size (in B)
 
 
 # ###### Global variables ###################################################
@@ -253,8 +253,8 @@ while running:
          sendTimeStamp = time.time()
          payload       = \
             '%d %d' % (seqNumber, int(sendTimeStamp * 1000000))
-         if len(payload) < opts.psize: # FIXME: use struct.pack
-            payload = (opts.psize - len(payload)) * '0' + payload
+         if len(payload) < opts.psize:
+            payload = (opts.psize - len(payload)) * ' ' + payload
          with lock:
             requests[payload] = sendTimeStamp
          udpSocket.send(payload)
