@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 # Container-based UDPPing for NorNet Edge
@@ -23,8 +23,7 @@
 
 
 # Ubuntu/Debian dependencies:
-# python-ipaddress
-# python-netifaces
+# python3-netifaces
 
 import argparse
 import datetime
@@ -46,7 +45,7 @@ RTT_VALID_MAX   = 300    # Maximum valid RTT (in s)
 PAYLOAD_MAX     = 2048   # Maximum payload size (in B)
 SLEEP_ON_ERROR  = 15     # Waiting time before restarting on error (in s)
 
-DEFAULT_DADDR   = ip_address(u'128.39.37.70')   # Default Ping destination with UDP Echo (voyager.nntb.no)
+DEFAULT_DADDR   = ip_address('128.39.37.70')   # Default Ping destination with UDP Echo (voyager.nntb.no)
 DEFAULT_DPORT   = 7      # Default destination port
 DEFAULT_PSIZE   = 20     # Default payload size
 DEFAULT_TIMEOUT = 60     # Default reply timeout (in s)
@@ -90,7 +89,7 @@ class Receiver(threading.Thread):
             receiveTimeStamp = time.time()   # time stamp in s
 
             # ====== Get RTT ================================================
-            [seqNumber, sendTimeStamp] = payload.strip().split(' ')
+            [seqNumber, sendTimeStamp] = payload.decode('utf-8').strip().split(' ')
             sendTimeStamp = int(sendTimeStamp) / 1000000.0   # time stamp in s
             rtt = receiveTimeStamp - sendTimeStamp
             if not ((rtt >= RTT_VALID_MIN) and (rtt <= RTT_VALID_MAX)):
@@ -131,9 +130,9 @@ class Receiver(threading.Thread):
 
             # ====== Expire all timed-out requests, logging them as loss ====
             try:
-               loss = [p for p in self.requests.keys() if time.time() - self.requests[p] > options.timeout]
+               loss = [p for p in list(self.requests.keys()) if time.time() - self.requests[p] > options.timeout]
                for payload in loss:
-                  [seqNumber, sendTimeStamp] = payload.strip().split(' ')
+                  [seqNumber, sendTimeStamp] = payload.decode('utf-8').strip().split(' ')
                   sendTimeStamp       = int(sendTimeStamp) / 1000000.0   # time stamp in s
                   sendTimeStampString = \
                      datetime.datetime.utcfromtimestamp(sendTimeStamp).strftime('%Y-%m-%d %H:%M:%S.%f')
@@ -266,7 +265,7 @@ while running:
          family = socket.AF_INET
       else:
          family = socket.AF_INET6
-      sourceIP = netifaces.ifaddresses(options.iface)[family][0]['addr']
+      sourceIP  = netifaces.ifaddresses(options.iface)[family][0]['addr']
       udpSocket = socket.socket(family, socket.SOCK_DGRAM)
       try:
          udpSocket.bind((sourceIP, sport))
@@ -284,16 +283,18 @@ while running:
       while running and not restart:
          # ====== Send UDP Ping =============================================
          sendTimeStamp = time.time()
-         payload       = \
+         payloadString = \
             '%d %d' % (seqNumber, int(sendTimeStamp * 1000000))
-         if len(payload) < options.psize:
-            payload = (options.psize - len(payload)) * ' ' + payload
+         if len(payloadString) < options.psize:
+            payloadString = (options.psize - len(payloadString)) * ' ' + payloadString
+
+         payload = payloadString.encode('utf-8')
          with lock:
             requests[payload] = sendTimeStamp
          udpSocket.send(payload)
 
          # ====== Increment sequence number =================================
-         if seqNumber >= sys.maxint:
+         if seqNumber >= sys.maxsize:
             seqNumber = 1   # roll over
          else:
             seqNumber = seqNumber + 1
