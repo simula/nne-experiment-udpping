@@ -32,8 +32,9 @@ import sys
 import argparse
 import signal
 import threading
-from datetime import datetime
-import logging, logging.config
+import datetime
+import logging
+import logging.config
 
 
 # ###### Constants ##########################################################
@@ -87,7 +88,7 @@ class Receiver(threading.Thread):
                logging.warn("Invalid RTT: %s", payload)
                continue
             sendTimeStampString = \
-               datetime.utcfromtimestamp(sendTimeStamp).strftime('%Y-%m-%d %H:%M:%S.%f')
+               datetime.datetime.utcfromtimestamp(sendTimeStamp).strftime('%Y-%m-%d %H:%M:%S.%f')
 
             # ====== Check for duplicate or expired =========================
             if payload in self.requests:
@@ -126,7 +127,7 @@ class Receiver(threading.Thread):
                   [seqNumber, sendTimeStamp] = payload.strip().split(' ')
                   sendTimeStamp       = int(sendTimeStamp) / 1000000.0   # time stamp in s
                   sendTimeStampString = \
-                     datetime.utcfromtimestamp(sendTimeStamp).strftime('%Y-%m-%d %H:%M:%S.%f')
+                     datetime.datetime.utcfromtimestamp(sendTimeStamp).strftime('%Y-%m-%d %H:%M:%S.%f')
                   mlogger.info(
                      '%s\t%d\t%d\t<d e="0"/>',
                      sendTimeStampString, opts.instance, int(seqNumber)
@@ -203,7 +204,7 @@ mlogger = logging.getLogger('mbbm')
 
 # ====== Initialise mutex and signal handlers ===============================
 udpSocket = None
-receiver      = None
+receiver  = None
 requests  = {}
 lock      = threading.Lock()
 
@@ -220,6 +221,7 @@ else:
 seqNumber = 1
 while running:
    try:
+      # ====== Clean-up previous round, if necessary ========================
       if udpSocket:
          udpSocket.close()
          udpSocket = None
@@ -228,18 +230,16 @@ while running:
             receiver.terminate.set()
             receiver.join()
          receiver = None
-      if restart:
-         restart = False
-
-      sip = netifaces.ifaddresses(opts.iface)[netifaces.AF_INET][0]['addr']
+      restart = False
 
       # ====== Create socket ================================================
+      sourceIP = netifaces.ifaddresses(opts.iface)[netifaces.AF_INET][0]['addr']
       udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
       try:
-         udpSocket.bind((sip, sport))
+         udpSocket.bind((sourceIP, sport))
       except: # fallback to a random source port
          if sport > 0:
-            udpSocket.bind((sip, 0))
+            udpSocket.bind((sourceIP, 0))
       udpSocket.connect((opts.daddr, opts.dport))
 
       # ====== Create receiver thread =======================================
