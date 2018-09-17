@@ -55,14 +55,14 @@ def handler(signum, frame):
 # ###### Receiver thread ####################################################
 class Receiver(threading.Thread):
    # ###### Constructor #####################################################
-   def __init__(self, sock, lock, requests, timeout):
+   def __init__(self, udpSocket, lock, requests, timeout):
       threading.Thread.__init__(self)
-      self.sock = sock
-      self.sock.settimeout(1)
-      self.lock = lock
-      self.requests = requests
-      self.timeout = timeout
-      self.daemon = True
+      self.udpSocket = udpSocket
+      self.udpSocket.settimeout(1)
+      self.lock      = lock
+      self.requests  = requests
+      self.timeout   = timeout
+      self.daemon    = True
       self.terminate = threading.Event()
 
    # ###### Main loop #######################################################
@@ -75,7 +75,7 @@ class Receiver(threading.Thread):
          payload = None
          try:
             # ====== Receive response =======================================
-            payload          = self.sock.recv(2048)
+            payload          = self.udpSocket.recv(2048)
             receiveTimeStamp = time.time()   # time stamp in s
 
             # ====== Get RTT ================================================
@@ -201,12 +201,12 @@ mlogger = logging.getLogger('mbbm')
 
 
 # ====== Initialise mutex and signal handlers ===============================
-sock = None
-recv = None
-requests = {}
-lock = threading.Lock()
+udpSocket = None
+recv      = None
+requests  = {}
+lock      = threading.Lock()
 
-signal.signal(signal.SIGINT, handler)
+signal.signal(signal.SIGINT,  handler)
 signal.signal(signal.SIGTERM, handler)
 
 if opts.network_id:
@@ -216,11 +216,12 @@ else:
 
 
 # ====== Main loop ==========================================================
+seqNumber = 1
 while running:
    try:
-      if sock:
-         sock.close()
-         sock = None
+      if udpSocket:
+         udpSocket.close()
+         udpSocket = None
       if recv:
          if recv.isAlive():
             recv.terminate.set()
@@ -230,42 +231,52 @@ while running:
          restart = False
 
       sip = netifaces.ifaddresses(opts.iface)[netifaces.AF_INET][0]['addr']
-      sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
+      # ====== Create socket ================================================
+      udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
       try:
-         sock.bind((sip, sport))
+         udpSocket.bind((sip, sport))
       except: # fallback to a random source port
          if sport > 0:
-            sock.bind((sip, 0))
+            udpSocket.bind((sip, 0))
+      udpSocket.connect((opts.daddr, opts.dport))
 
-      sock.connect((opts.daddr, opts.dport))
-
-      recv = Receiver(sock, lock, requests, timeout=opts.timeout)
+      # ====== Create receiver thread =======================================
+      recv = Receiver(udpSocket, lock, requests, timeout=opts.timeout)
       recv.start()
 
+      # ====== Send loop ====================================================
       logging.debug("Starting")
-      seq = 1 # FIXME: shall we maintain the same sequence number forever?
-
       while running and not restart:
-         stime = time.time()
-         payload = '%d %d' % (seq, int(stime * 1000000))
+         # ====== Send UDP Ping =============================================
+         sendTimeStamp = time.time()
+         payload       = \
+            '%d %d' % (seqNumber, int(sendTimeStamp * 1000000))
          if len(payload) < opts.psize: # FIXME: use struct.pack
             payload = (opts.psize - len(payload)) * '0' + payload
          with lock:
-            requests[payload] = stime
-         sock.send(payload)
-         if seq >= sys.maxint: seq = 1 # roll over
-         seq = seq + 1
-         time.sleep(1 - (time.time() - stime))
+            requests[payload] = sendTimeStamp
+         udpSocket.send(payload)
+
+         # ====== Increment sequence number =================================
+         if seqNumber >= sys.maxint:
+            seqNumber = 1   # roll over
+         else:
+            seqNumber = seqNumber + 1
+
+         # ====== Wait ======================================================
+         time.sleep(1 - (time.time() - sendTimeStamp))
+
+   # ====== Handle error ====================================================
    except:
       logging.exception("Error")
       time.sleep(15)
 
 
+# ====== Shut down ==========================================================
 if recv:
    try:
       recv.join(5000)
    except:
       pass
 logging.debug("Exiting")
-sys.exit(0)
