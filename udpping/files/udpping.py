@@ -23,24 +23,32 @@
 
 
 # Ubuntu/Debian dependencies:
+# python-ipaddress
 # python-netifaces
 
-import socket
-import netifaces
-import time
-import sys
 import argparse
-import signal
-import threading
 import datetime
 import logging
 import logging.config
+import netifaces
+import signal
+import socket
+import sys
+import threading
+import time
+from ipaddress import ip_address
 
 
 # ###### Constants ##########################################################
-RTT_VALID_MIN = 0      # Minimum valid RTT (in s)
-RTT_VALID_MAX = 300    # Maximum valid RTT (in s)
-PAYLOAD_MAX   = 2048   # Maximum payload size (in B)
+RTT_VALID_MIN   = 0      # Minimum valid RTT (in s)
+RTT_VALID_MAX   = 300    # Maximum valid RTT (in s)
+PAYLOAD_MAX     = 2048   # Maximum payload size (in B)
+SLEEP_ON_ERROR  = 15     # Waiting time before restarting on error (in s)
+
+DEFAULT_DADDR   = ip_address(u'128.39.37.70')   # Default Ping destination with UDP Echo (voyager.nntb.no)
+DEFAULT_DPORT   = 7      # Default destination port
+DEFAULT_PSIZE   = 20     # Default payload size
+DEFAULT_TIMEOUT = 60     # Default reply timeout (in s)
 
 
 # ###### Global variables ###################################################
@@ -147,15 +155,27 @@ class Receiver(threading.Thread):
 # ====== Handle arguments ===================================================
 op = argparse.ArgumentParser(description='UDP Ping for NorNet Edge')
 op.add_argument('-i', '--instance',   help="Measurement instance ID", type=int, required=True)
-op.add_argument('-d', '--dport',      help='Destination port',        type=int, default=7)
-op.add_argument('-D', '--daddr',      help='Destination IP',          default='128.39.37.70')
+op.add_argument('-d', '--dport',      help='Destination port',        type=int, default=DEFAULT_DPORT)
+op.add_argument('-D', '--daddr',      help='Destination IP',          type=ip_address, default=DEFAULT_DADDR)
 op.add_argument('-I', '--iface',      help='Interface name',          required=True)
-op.add_argument('-S', '--psize',      help='Payload size',            type=int, default=20)
-op.add_argument('-t', '--timeout',    help='Reply timeout',           type=int, default=60)
+op.add_argument('-S', '--psize',      help='Payload size',            type=int, default=DEFAULT_PSIZE)
+op.add_argument('-t', '--timeout',    help='Reply timeout',           type=int, default=DEFAULT_TIMEOUT)
 op.add_argument('-N', '--network_id', help='Network identifier',      type=int, default=None)
 opts = op.parse_args()
 
-# FIXME: check if arguments are valid
+if ((opts.dport < 1) or (opts.dport > 65535)):
+   sys.stderr.write('ERROR: Invalid destination port!\n')
+   sys.exit(1)
+if ((opts.psize < 16) or (opts.psize > PAYLOAD_MAX)):
+   sys.stderr.write('ERROR: Invalid payload size!\n')
+   sys.exit(1)
+if ((opts.timeout < 1) or (opts.timeout > 24*3600)):
+   sys.stderr.write('ERROR: Invalid reply timeout!\n')
+   sys.exit(1)
+if ((opts.network_id != None) and ((opts.network_id < 0) or (opts.network_id > 999))):
+   sys.stderr.write('ERROR: Invalid network identifier!\n')
+   sys.exit(1)
+
 
 # ====== Initialise logger ==================================================
 MBBM_LOGGING_CONF = {
@@ -233,14 +253,18 @@ while running:
       restart = False
 
       # ====== Create socket ================================================
-      sourceIP = netifaces.ifaddresses(opts.iface)[netifaces.AF_INET][0]['addr']
-      udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+      if opts.daddr.version == 4:
+         family = socket.AF_INET
+      else:
+         family = socket.AF_INET6
+      sourceIP = netifaces.ifaddresses(opts.iface)[family][0]['addr']
+      udpSocket = socket.socket(family, socket.SOCK_DGRAM)
       try:
          udpSocket.bind((sourceIP, sport))
       except: # fallback to a random source port
          if sport > 0:
             udpSocket.bind((sourceIP, 0))
-      udpSocket.connect((opts.daddr, opts.dport))
+      udpSocket.connect((str(opts.daddr), opts.dport))
 
       # ====== Create receiver thread =======================================
       receiver = Receiver(udpSocket, lock, requests, timeout=opts.timeout)
@@ -271,7 +295,7 @@ while running:
    # ====== Handle error ====================================================
    except:
       logging.exception("Error")
-      time.sleep(15)
+      time.sleep(SLEEP_ON_ERROR)
 
 
 # ====== Shut down ==========================================================
