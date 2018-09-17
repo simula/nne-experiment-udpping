@@ -38,4 +38,5 @@ COPY files/* /opt/monroe/
 
 RUN apt-get update && apt-get install -y joe subnetcalc netperfmeter mlocate python3 python3-netifaces && updatedb && apt-get clean
 
-ENTRYPOINT [ "dumb-init", "--", "/usr/bin/python3", "/opt/monroe/udpping" ]
+# ENTRYPOINT [ "dumb-init", "--", "/usr/bin/python3", "/opt/monroe/udpping" ]
+ENTRYPOINT [ "/sbin/init" ]
