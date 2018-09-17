@@ -35,9 +35,9 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 CONTAINER=${DIR##*/}
-CONTAINERTAG=dreibh/udpping   # Modify to your own dockerhub user/repo
+CONTAINERTAG=dreibh/udpping
 
-docker login
+# docker login
 docker tag ${CONTAINER} ${CONTAINERTAG}
 docker push ${CONTAINERTAG}
 
