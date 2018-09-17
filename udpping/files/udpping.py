@@ -39,6 +39,7 @@ import logging, logging.config
 # ###### Constants ##########################################################
 RTT_VALID_MIN = 0     # Minimum valid RTT (in s)
 RTT_VALID_MAX = 300   # Maximum valid RTT (in s)
+PAYLOAD_MAX   = 2048  # Maximum payload size (in B)
 
 
 # ###### Global variables ###################################################
@@ -75,7 +76,7 @@ class Receiver(threading.Thread):
          payload = None
          try:
             # ====== Receive response =======================================
-            payload          = self.udpSocket.recv(2048)
+            payload          = self.udpSocket.recv(PAYLOAD_MAX)
             receiveTimeStamp = time.time()   # time stamp in s
 
             # ====== Get RTT ================================================
@@ -202,7 +203,7 @@ mlogger = logging.getLogger('mbbm')
 
 # ====== Initialise mutex and signal handlers ===============================
 udpSocket = None
-recv      = None
+receiver      = None
 requests  = {}
 lock      = threading.Lock()
 
@@ -222,11 +223,11 @@ while running:
       if udpSocket:
          udpSocket.close()
          udpSocket = None
-      if recv:
-         if recv.isAlive():
-            recv.terminate.set()
-            recv.join()
-         recv = None
+      if receiver:
+         if receiver.isAlive():
+            receiver.terminate.set()
+            receiver.join()
+         receiver = None
       if restart:
          restart = False
 
@@ -242,8 +243,8 @@ while running:
       udpSocket.connect((opts.daddr, opts.dport))
 
       # ====== Create receiver thread =======================================
-      recv = Receiver(udpSocket, lock, requests, timeout=opts.timeout)
-      recv.start()
+      receiver = Receiver(udpSocket, lock, requests, timeout=opts.timeout)
+      receiver.start()
 
       # ====== Send loop ====================================================
       logging.debug("Starting")
@@ -274,9 +275,9 @@ while running:
 
 
 # ====== Shut down ==========================================================
-if recv:
+if receiver:
    try:
-      recv.join(5000)
+      receiver.join(5000)
    except:
       pass
 logging.debug("Exiting")
