@@ -21,6 +21,7 @@
 #
 # Contact: dreibh@simula.no
 
+
 # Ubuntu/Debian dependencies:
 # python-netifaces
 
@@ -34,68 +35,19 @@ import threading
 from datetime import datetime
 import logging, logging.config
 
+
+# ###### Global variables ###################################################
 running = True
 restart = False
 
-op = argparse.ArgumentParser(description='UDP Ping for NorNet Edge')
-op.add_argument('-i', '--instance', type=int, help="Measurement instance id", required=True)
-op.add_argument('--dport', type=int, default=7, help='Destination port')
-op.add_argument('--daddr', default='128.39.37.70', help='Destination IP')
-op.add_argument('--iface', help='Interface name', required=True)
-op.add_argument('--psize', help='Payload size', type=int, default=20)
-op.add_argument('--timeout', help='Reply timeout', type=int, default=60)
-op.add_argument('--network_id', type=int, default=None, help='Network identifier')
-opts = op.parse_args()
 
-# FIXME: check if arguments are valid
-
-MBBM_LOGGING_CONF = {
-    'version': 1,
-    'handlers': {
-        'default': {
-            'level': 'DEBUG',
-            'class': 'logging.handlers.TimedRotatingFileHandler',
-            'formatter': 'standard',
-            'filename': '/nne/log/uping_%d.log' % (opts.instance),
-            'when': 'D'
-        },
-        'mbbm': {
-            'level': 'DEBUG',
-            'class': 'logging.handlers.TimedRotatingFileHandler',
-            'formatter': 'mbbm',
-            'filename': '/nne/data/uping_%d.dat' % (opts.instance),
-            'when': 'S',
-            'interval': 15
-        }
-    },
-    'formatters': {
-        'standard': {
-            'format': '%(asctime)s %(levelname)s [PID=%(process)d] %(message)s'
-        },
-        'mbbm': {
-            'format': '%(message)s',
-        }
-    },
-    'loggers': {
-        'mbbm': {
-            'handlers': ['mbbm'],
-            'level': 'DEBUG',
-            'propagate': False,
-        }
-    },
-    'root': {
-        'level': 'DEBUG',
-        'handlers': ['default'],
-    }
-}
-
-logging.config.dictConfig(MBBM_LOGGING_CONF)
-mlogger = logging.getLogger('mbbm')
-
+# ###### Signal handler #####################################################
 def handler(signum, frame):
     global running
     running = False
 
+
+# ###### Receiver thread ####################################################
 class Receiver(threading.Thread):
     def __init__(self, sock, lock, requests, timeout):
         threading.Thread.__init__(self)
@@ -165,6 +117,69 @@ class Receiver(threading.Thread):
 
         logging.debug("Stopping receiver thread")
 
+
+
+# ###### Main program #######################################################
+
+# ====== Handle arguments ===================================================
+op = argparse.ArgumentParser(description='UDP Ping for NorNet Edge')
+op.add_argument('-i', '--instance',   help="Measurement instance ID", type=int, required=True)
+op.add_argument('-d', '--dport',      help='Destination port',        type=int, default=7)
+op.add_argument('-D', '--daddr',      help='Destination IP',          default='128.39.37.70')
+op.add_argument('-I', '--iface',      help='Interface name',          required=True)
+op.add_argument('-S', '--psize',      help='Payload size',            type=int, default=20)
+op.add_argument('-t', '--timeout',    help='Reply timeout',           type=int, default=60)
+op.add_argument('-N', '--network_id', help='Network identifier',      type=int, default=None)
+opts = op.parse_args()
+
+# FIXME: check if arguments are valid
+
+# ====== Initialise logger ==================================================
+MBBM_LOGGING_CONF = {
+    'version': 1,
+    'handlers': {
+        'default': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'formatter': 'standard',
+            'filename': '/nne/log/uping_%d.log' % (opts.instance),
+            'when': 'D'
+        },
+        'mbbm': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'formatter': 'mbbm',
+            'filename': '/nne/data/uping_%d.dat' % (opts.instance),
+            'when': 'S',
+            'interval': 15
+        }
+    },
+    'formatters': {
+        'standard': {
+            'format': '%(asctime)s %(levelname)s [PID=%(process)d] %(message)s'
+        },
+        'mbbm': {
+            'format': '%(message)s',
+        }
+    },
+    'loggers': {
+        'mbbm': {
+            'handlers': ['mbbm'],
+            'level': 'DEBUG',
+            'propagate': False,
+        }
+    },
+    'root': {
+        'level': 'DEBUG',
+        'handlers': ['default'],
+    }
+}
+
+logging.config.dictConfig(MBBM_LOGGING_CONF)
+mlogger = logging.getLogger('mbbm')
+
+
+# ====== Initialise mutex and signal handlers ===============================
 sock = None
 recv = None
 requests = {}
@@ -178,6 +193,8 @@ if opts.network_id:
 else:
     sport = 0
 
+
+# ====== Main loop ==========================================================
 while running:
     try:
         if sock:
