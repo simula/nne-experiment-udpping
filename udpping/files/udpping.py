@@ -109,7 +109,7 @@ class Receiver(threading.Thread):
             # ====== Log result =============================================
             mlogger.info(
                '%s\t%d\t%d\t<d e="%d"><rtt>%.6f</rtt></d>',
-               sendTimeStampString, opts.instance, int(seqNumber), e, rtt
+               sendTimeStampString, options.instance, int(seqNumber), e, rtt
             )
 
          # ====== Error handling ============================================
@@ -130,7 +130,7 @@ class Receiver(threading.Thread):
 
             # ====== Expire all timed-out requests, logging them as loss ====
             try:
-               loss = [p for p in self.requests.keys() if time.time() - self.requests[p] > opts.timeout]
+               loss = [p for p in self.requests.keys() if time.time() - self.requests[p] > options.timeout]
                for payload in loss:
                   [seqNumber, sendTimeStamp] = payload.strip().split(' ')
                   sendTimeStamp       = int(sendTimeStamp) / 1000000.0   # time stamp in s
@@ -138,7 +138,7 @@ class Receiver(threading.Thread):
                      datetime.datetime.utcfromtimestamp(sendTimeStamp).strftime('%Y-%m-%d %H:%M:%S.%f')
                   mlogger.info(
                      '%s\t%d\t%d\t<d e="0"/>',
-                     sendTimeStampString, opts.instance, int(seqNumber)
+                     sendTimeStampString, options.instance, int(seqNumber)
                   )
                   with self.lock:
                      del self.requests[payload]
@@ -153,26 +153,26 @@ class Receiver(threading.Thread):
 # ###### Main program #######################################################
 
 # ====== Handle arguments ===================================================
-op = argparse.ArgumentParser(description='UDP Ping for NorNet Edge')
-op.add_argument('-i', '--instance',   help="Measurement instance ID", type=int, required=True)
-op.add_argument('-d', '--dport',      help='Destination port',        type=int, default=DEFAULT_DPORT)
-op.add_argument('-D', '--daddr',      help='Destination IP',          type=ip_address, default=DEFAULT_DADDR)
-op.add_argument('-I', '--iface',      help='Interface name',          required=True)
-op.add_argument('-S', '--psize',      help='Payload size',            type=int, default=DEFAULT_PSIZE)
-op.add_argument('-t', '--timeout',    help='Reply timeout',           type=int, default=DEFAULT_TIMEOUT)
-op.add_argument('-N', '--network_id', help='Network identifier',      type=int, default=None)
-opts = op.parse_args()
+ap = argparse.ArgumentParser(description='UDP Ping for NorNet Edge')
+ap.add_argument('-i', '--instance',   help="Measurement instance ID", type=int, required=True)
+ap.add_argument('-d', '--dport',      help='Destination port',        type=int, default=DEFAULT_DPORT)
+ap.add_argument('-D', '--daddr',      help='Destination IP',          type=ip_address, default=DEFAULT_DADDR)
+ap.add_argument('-I', '--iface',      help='Interface name',          required=True)
+ap.add_argument('-S', '--psize',      help='Payload size',            type=int, default=DEFAULT_PSIZE)
+ap.add_argument('-t', '--timeout',    help='Reply timeout',           type=int, default=DEFAULT_TIMEOUT)
+ap.add_argument('-N', '--network_id', help='Network identifier',      type=int, default=None)
+options = ap.parse_args()
 
-if ((opts.dport < 1) or (opts.dport > 65535)):
+if ((options.dport < 1) or (options.dport > 65535)):
    sys.stderr.write('ERROR: Invalid destination port!\n')
    sys.exit(1)
-if ((opts.psize < 16) or (opts.psize > PAYLOAD_MAX)):
+if ((options.psize < 16) or (options.psize > PAYLOAD_MAX)):
    sys.stderr.write('ERROR: Invalid payload size!\n')
    sys.exit(1)
-if ((opts.timeout < 1) or (opts.timeout > 24*3600)):
+if ((options.timeout < 1) or (options.timeout > 24*3600)):
    sys.stderr.write('ERROR: Invalid reply timeout!\n')
    sys.exit(1)
-if ((opts.network_id != None) and ((opts.network_id < 0) or (opts.network_id > 999))):
+if ((options.network_id != None) and ((options.network_id < 0) or (options.network_id > 999))):
    sys.stderr.write('ERROR: Invalid network identifier!\n')
    sys.exit(1)
 
@@ -185,14 +185,14 @@ MBBM_LOGGING_CONF = {
          'level': 'DEBUG',
          'class': 'logging.handlers.TimedRotatingFileHandler',
          'formatter': 'standard',
-         'filename': '/nne/log/uping_%d.log' % (opts.instance),
+         'filename': '/nne/log/uping_%d.log' % (options.instance),
          'when': 'D'
       },
       'mbbm': {
          'level': 'DEBUG',
          'class': 'logging.handlers.TimedRotatingFileHandler',
          'formatter': 'mbbm',
-         'filename': '/nne/data/uping_%d.dat' % (opts.instance),
+         'filename': '/nne/data/uping_%d.dat' % (options.instance),
          'when': 'S',
          'interval': 15
       }
@@ -231,8 +231,8 @@ lock      = threading.Lock()
 signal.signal(signal.SIGINT,  handler)
 signal.signal(signal.SIGTERM, handler)
 
-if opts.network_id:
-   sport = 10000 + 10 * int(socket.gethostname()[3:]) + opts.network_id
+if options.network_id:
+   sport = 10000 + 10 * int(socket.gethostname()[3:]) + options.network_id
 else:
    sport = 0
 
@@ -253,21 +253,21 @@ while running:
       restart = False
 
       # ====== Create socket ================================================
-      if opts.daddr.version == 4:
+      if options.daddr.version == 4:
          family = socket.AF_INET
       else:
          family = socket.AF_INET6
-      sourceIP = netifaces.ifaddresses(opts.iface)[family][0]['addr']
+      sourceIP = netifaces.ifaddresses(options.iface)[family][0]['addr']
       udpSocket = socket.socket(family, socket.SOCK_DGRAM)
       try:
          udpSocket.bind((sourceIP, sport))
       except: # fallback to a random source port
          if sport > 0:
             udpSocket.bind((sourceIP, 0))
-      udpSocket.connect((str(opts.daddr), opts.dport))
+      udpSocket.connect((str(options.daddr), options.dport))
 
       # ====== Create receiver thread =======================================
-      receiver = Receiver(udpSocket, lock, requests, timeout=opts.timeout)
+      receiver = Receiver(udpSocket, lock, requests, timeout=options.timeout)
       receiver.start()
 
       # ====== Send loop ====================================================
@@ -277,8 +277,8 @@ while running:
          sendTimeStamp = time.time()
          payload       = \
             '%d %d' % (seqNumber, int(sendTimeStamp * 1000000))
-         if len(payload) < opts.psize:
-            payload = (opts.psize - len(payload)) * ' ' + payload
+         if len(payload) < options.psize:
+            payload = (options.psize - len(payload)) * ' ' + payload
          with lock:
             requests[payload] = sendTimeStamp
          udpSocket.send(payload)
