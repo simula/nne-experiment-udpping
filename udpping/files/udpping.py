@@ -1,5 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# =================================================================
+#          #     #                 #     #
+#          ##    #   ####   #####  ##    #  ######   #####
+#          # #   #  #    #  #    # # #   #  #          #
+#          #  #  #  #    #  #    # #  #  #  #####      #
+#          #   # #  #    #  #####  #   # #  #          #
+#          #    ##  #    #  #   #  #    ##  #          #
+#          #     #   ####   #    # #     #  ######     #
+#
+#       ---   The NorNet Testbed for Multi-Homed Systems  ---
+#                       https://www.nntb.no
+# =================================================================
 #
 # Container-based UDPPing for NorNet Edge
 #
@@ -30,6 +42,7 @@ import datetime
 import logging
 import logging.config
 import netifaces
+import os
 import re
 import signal
 import socket
@@ -49,6 +62,9 @@ DEFAULT_DADDR   = ip_address('128.39.37.70')   # Default Ping destination with U
 DEFAULT_DPORT   = 7      # Default destination port
 DEFAULT_PSIZE   = 20     # Default payload size
 DEFAULT_TIMEOUT = 60     # Default reply timeout (in s)
+
+LOG_DIRECTORY   = '/monroe/results/log'
+DATA_DIRECTORY  = '/monroe/results/data'
 
 
 # ###### Global variables ###################################################
@@ -190,6 +206,15 @@ else:
    sport = 0
 
 
+# ====== Make sure the output directories exist =============================
+for directory in [ LOG_DIRECTORY, DATA_DIRECTORY ]:
+   try:
+      os.makedirs(directory, 0o755, True)
+   except:
+      sys.stderr.write('ERROR: Unable to create directory ' + directory + '!\n')
+      sys.exit(1)
+
+
 # ====== Initialise logger ==================================================
 MBBM_LOGGING_CONF = {
    'version': 1,
@@ -198,14 +223,14 @@ MBBM_LOGGING_CONF = {
          'level': 'DEBUG',
          'class': 'logging.handlers.TimedRotatingFileHandler',
          'formatter': 'standard',
-         'filename': '/nne/log/uping_%d.log' % (options.instance),
+         'filename': (LOG_DIRECTORY + '/uping_%d.log') % (options.instance),
          'when': 'D'
       },
       'mbbm': {
          'level': 'DEBUG',
          'class': 'logging.handlers.TimedRotatingFileHandler',
          'formatter': 'mbbm',
-         'filename': '/nne/data/uping_%d.dat' % (options.instance),
+         'filename': (DATA_DIRECTORY + '/uping_%d.dat') % (options.instance),
          'when': 'S',
          'interval': 15
       }
