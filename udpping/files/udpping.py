@@ -36,6 +36,11 @@ from datetime import datetime
 import logging, logging.config
 
 
+# ###### Constants ##########################################################
+RTT_VALID_MIN = 0     # Minimum valid RTT (in s)
+RTT_VALID_MAX = 300   # Maximum valid RTT (in s)
+
+
 # ###### Global variables ###################################################
 running = True
 restart = False
@@ -49,6 +54,7 @@ def handler(signum, frame):
 
 # ###### Receiver thread ####################################################
 class Receiver(threading.Thread):
+   # ###### Constructor #####################################################
    def __init__(self, sock, lock, requests, timeout):
       threading.Thread.__init__(self)
       self.sock = sock
@@ -59,36 +65,44 @@ class Receiver(threading.Thread):
       self.daemon = True
       self.terminate = threading.Event()
 
+   # ###### Main loop #######################################################
    def run(self):
       global running, restart
-
       logging.info("Starting receiver thread")
 
+      # ====== Reception loop ===============================================
       while running and not self.terminate.is_set():
          payload = None
          try:
-            payload = self.sock.recv(2048)
-            [seqnum, oldtime] = payload.strip().split(' ')
-            oldtime = int(oldtime) / 1000000.0
-            rtt = time.time() - oldtime
+            # ====== Receive response =======================================
+            payload          = self.sock.recv(2048)
+            receiveTimeStamp = time.time()   # time stamp in s
 
-            if not (rtt >=0 and rtt < 10000):
+            # ====== Get RTT ================================================
+            [seqNumber, sendTimeStamp] = payload.strip().split(' ')
+            sendTimeStamp = int(sendTimeStamp) / 1000000.0   # time stamp in s
+            rtt = receiveTimeStamp - sendTimeStamp
+            if not ((rtt >= RTT_VALID_MIN) and (rtt <= RTT_VALID_MAX)):
                logging.warn("Invalid RTT: %s", payload)
                continue
+            sendTimeStampString = \
+               datetime.utcfromtimestamp(sendTimeStamp).strftime('%Y-%m-%d %H:%M:%S.%f')
 
-            ts = datetime.utcfromtimestamp(oldtime).strftime('%Y-%m-%d %H:%M:%S.%f')
-
+            # ====== Check for duplicate or expired =========================
             if payload in self.requests:
                e = 0
             else:
                e = 1
-               logging.warn("Duplicate or expired, seq=%d ts=%s", int(seqnum), ts)
+               logging.warn("Duplicate or expired, seqNumber=%d sendTimeStampString=%s",
+                            int(seqNumber), sendTimeStampString)
 
+            # ====== Log result =============================================
             mlogger.info(
                '%s\t%d\t%d\t<d e="%d"><rtt>%.6f</rtt></d>',
-               ts, opts.instance, int(seqnum), e, rtt
+               sendTimeStampString, opts.instance, int(seqNumber), e, rtt
             )
 
+         # ====== Error handling ============================================
          except socket.timeout:
             pass
          except IOError:
@@ -97,24 +111,31 @@ class Receiver(threading.Thread):
             break
          except:
             logging.exception("Exception while handling a reply")
+
+         # ====== Clean-up ==================================================
          finally:
+            # ====== Remove request =========================================
             with self.lock:
                if payload in self.requests: del self.requests[payload]
+
+            # ====== Expire all timed-out requests, logging them as loss ====
             try:
                loss = [p for p in self.requests.keys() if time.time() - self.requests[p] > opts.timeout]
                for payload in loss:
-                  [seqnum, oldtime] = payload.strip().split(' ')
-                  oldtime = int(oldtime) / 1000000.0
-                  ts = datetime.utcfromtimestamp(oldtime).strftime('%Y-%m-%d %H:%M:%S.%f')
+                  [seqNumber, sendTimeStamp] = payload.strip().split(' ')
+                  sendTimeStamp       = int(sendTimeStamp) / 1000000.0   # time stamp in s
+                  sendTimeStampString = \
+                     datetime.utcfromtimestamp(sendTimeStamp).strftime('%Y-%m-%d %H:%M:%S.%f')
                   mlogger.info(
                      '%s\t%d\t%d\t<d e="0"/>',
-                     ts, opts.instance, int(seqnum)
+                     sendTimeStampString, opts.instance, int(seqNumber)
                   )
                   with self.lock:
                      del self.requests[payload]
             except:
                logging.exception("Exception while writing expired packets")
 
+      # ====== Shut down ====================================================
       logging.debug("Stopping receiver thread")
 
 
@@ -124,11 +145,11 @@ class Receiver(threading.Thread):
 # ====== Handle arguments ===================================================
 op = argparse.ArgumentParser(description='UDP Ping for NorNet Edge')
 op.add_argument('-i', '--instance',   help="Measurement instance ID", type=int, required=True)
-op.add_argument('-d', '--dport',     help='Destination port',         type=int, default=7)
-op.add_argument('-D', '--daddr',     help='Destination IP',           default='128.39.37.70')
-op.add_argument('-I', '--iface',     help='Interface name',           required=True)
-op.add_argument('-S', '--psize',     help='Payload size',             type=int, default=20)
-op.add_argument('-t', '--timeout',   help='Reply timeout',            type=int, default=60)
+op.add_argument('-d', '--dport',      help='Destination port',        type=int, default=7)
+op.add_argument('-D', '--daddr',      help='Destination IP',          default='128.39.37.70')
+op.add_argument('-I', '--iface',      help='Interface name',          required=True)
+op.add_argument('-S', '--psize',      help='Payload size',            type=int, default=20)
+op.add_argument('-t', '--timeout',    help='Reply timeout',           type=int, default=60)
 op.add_argument('-N', '--network_id', help='Network identifier',      type=int, default=None)
 opts = op.parse_args()
 
