@@ -39,12 +39,12 @@ CONTAINERTAG=dreibh/udpping
 TESTNAME="test-${CONTAINER}"
 
 echo "Building:"
-./build.sh
+./build
 
 echo "Tagging:"
 # Create tag (no push needed):
 docker tag ${CONTAINER} ${CONTAINERTAG}
-#./push.sh
+#./push
 
 echo "Stopping previous run:"
 docker kill ${TESTNAME} || true
@@ -52,9 +52,13 @@ docker container rm ${TESTNAME} || true
 
 echo "Starting:"
 mkdir -p /run/shm/monroe-results
+echo '{ "node_id": "999", "instances": [ { "measurement_id": "99999", "interface": "op0", "network_id": "99" }, { "measurement_id": "99998", "interface": "op1", "network_id": "98" } ] }
+' >config
+echo '999' >nodeid
 docker run --name ${TESTNAME} \
    -v /run/shm/monroe-results:/monroe/results \
-   -v monroe-config:/monroe/config:ro \
+   -v `pwd`/config:/monroe/config:ro \
+   -v `pwd`/nodeid:/nodeid:ro \
    ${CONTAINERTAG} &
 
 sleep 1

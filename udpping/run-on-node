@@ -1,7 +1,5 @@
 #!/bin/bash -e
 
-MONROE_NAMESPACE=$(docker ps --no-trunc -aqf name=monroe-namespace)
-
 WORKDIR=/run/shm/test0
 rm -rf $WORKDIR
 mkdir -p $WORKDIR
@@ -9,4 +7,6 @@ echo '{ "node_id": "999", "instances": [ { "measurement_id": "99999", "interface
 ' >$WORKDIR/config
 mkdir -p $WORKDIR/results
 
-docker run -d --name test0 --net=container:$MONROE_NAMESPACE   -v $WORKDIR/results:/monroe/results -v $WORKDIR/config:/monroe/config:ro dreibh/udpping
+
+MONROE_NAMESPACE=$(docker ps --no-trunc -aqf name=monroe-namespace)
+docker run -d --name test0 --net=container:$MONROE_NAMESPACE -v $WORKDIR/results:/monroe/results -v $WORKDIR/config:/monroe/config:ro dreibh/udpping
