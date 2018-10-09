@@ -51,6 +51,7 @@ docker kill ${TESTNAME} || true
 docker container rm ${TESTNAME} || true
 
 echo "Starting:"
+rm -rf /run/shm/monroe-results
 mkdir -p /run/shm/monroe-results
 echo '{ "node_id": "999", "instances": [ { "measurement_id": "99997", "interface": "eth0", "network_id": "97" } ] }
 ' >config
