@@ -226,7 +226,7 @@ if options.network_id:
          sys.stderr.write('ERROR: Hostname is not "nne<NNN>"; try without network identifier!\n')
          sys.exit(1)
 
-      sport = 10000 + (10 * nodeNumber) + options.network_id
+   sport = 10000 + (10 * nodeNumber) + options.network_id
 else:
    sport = 0
 

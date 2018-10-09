@@ -52,7 +52,7 @@ docker container rm ${TESTNAME} || true
 
 echo "Starting:"
 mkdir -p /run/shm/monroe-results
-echo '{ "node_id": "999", "instances": [ { "measurement_id": "99999", "interface": "op0", "network_id": "99" }, { "measurement_id": "99998", "interface": "op1", "network_id": "98" } ] }
+echo '{ "node_id": "999", "instances": [ { "measurement_id": "99997", "interface": "eth0", "network_id": "97" } ] }
 ' >config
 echo '999' >nodeid
 docker run --name ${TESTNAME} \
