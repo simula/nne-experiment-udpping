@@ -15,7 +15,7 @@
 #
 # Container-based UDPPing for NorNet Edge
 #
-# Copyright (C) 2018 by Thomas Dreibholz
+# Copyright (C) 2018-2019 by Thomas Dreibholz
 # Copyright (C) 2012-2017 by Džiugas Baltrūnas
 #
 # This program is free software: you can redistribute it and/or modify
@@ -49,6 +49,7 @@ import socket
 import sys
 import threading
 import time
+import bz2
 from ipaddress import ip_address
 
 
@@ -73,7 +74,7 @@ restart = False
 
 
 # ###### Signal handler #####################################################
-def handler(signum, frame):
+def signalHandler(signum, frame):
    global running
    running = False
 
@@ -165,6 +166,17 @@ class Receiver(threading.Thread):
       logging.debug("Stopping receiver thread")
 
 
+# ###### Compressing log rotator ############################################
+def CompressingRotator(source, dest):
+   os.rename(source, dest)
+   f_in = open(dest, 'rb')
+   f_out = bz2.BZ2File("%s.bz2" % dest, 'wb')
+   f_out.writelines(f_in)
+   f_out.close()
+   f_in.close()
+   os.remove(dest)
+
+
 
 # ###### Main program #######################################################
 
@@ -232,7 +244,7 @@ MBBM_LOGGING_CONF = {
          'formatter': 'mbbm',
          'filename': (DATA_DIRECTORY + '/uping_%d.dat') % (options.instance),
          'when': 'S',
-         'interval': 15
+         'interval': 15,
       }
    },
    'formatters': {
@@ -258,6 +270,8 @@ MBBM_LOGGING_CONF = {
 
 logging.config.dictConfig(MBBM_LOGGING_CONF)
 mlogger = logging.getLogger('mbbm')
+for loghandler in mlogger.handlers[:]:
+   loghandler.rotator = CompressingRotator
 
 
 # ====== Initialise mutex and signal handlers ===============================
@@ -266,8 +280,8 @@ receiver  = None
 requests  = {}
 lock      = threading.Lock()
 
-signal.signal(signal.SIGINT,  handler)
-signal.signal(signal.SIGTERM, handler)
+signal.signal(signal.SIGINT,  signalHandler)
+signal.signal(signal.SIGTERM, signalHandler)
 
 
 # ====== Main loop ==========================================================
