@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# =================================================================
+#          #     #                 #     #
+#          ##    #   ####   #####  ##    #  ######   #####
+#          # #   #  #    #  #    # # #   #  #          #
+#          #  #  #  #    #  #    # #  #  #  #####      #
+#          #   # #  #    #  #####  #   # #  #          #
+#          #    ##  #    #  #   #  #    ##  #          #
+#          #     #   ####   #    # #     #  ######     #
+#
+#       ---   The NorNet Testbed for Multi-Homed Systems  ---
+#                       https://www.nntb.no
+# =================================================================
+#
+# Container-based UDPPing Launcher for NorNet Edge
+#
+# Copyright (C) 2018-2019 by Thomas Dreibholz
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Contact: dreibh@simula.no
+
+
+import json
+import sys
+import subprocess
+
+
+NODEID_FILE = '/etc/nodeid'
+CONFIG_FILE = 'config'
+
+
+# ====== Check node ID ======================================================
+try:
+   nodeIDFile = open(NODEID_FILE)
+   nodeID = int(nodeIDFile.read())
+except:
+   sys.stderr.write('Unable to read node ID from ' + NODEID_FILE + '!\n')
+   sys.exit(1)
+
+
+# ====== Read configuration file ============================================
+try:
+   configurationFile = open(CONFIG_FILE)
+   configuration = json.load(configurationFile)
+except:
+   sys.stderr.write('Unable to read configuration from ' + CONFIG_FILE + '!\n')
+   sys.exit(1)
+
+try:
+   myNodeID  = configuration['node_id']
+   instances = configuration['instances']
+except:
+   sys.stderr.write('Invalid node ID or instances in ' + CONFIG_FILE + '!\n')
+   sys.exit(1)
+
+
+# ====== Start instances ====================================================
+for instance in instances:
+   try:
+      measurementID = int(instance['measurement_id'])
+      interface     = instance['interface']
+      networkID     = int(instance['network_id'])
+   except:
+      sys.stderr.write('Invalid instance definition in ' + CONFIG_FILE + '!\n')
+      sys.exit(1)
+
+   print('Starting instance ' + str(measurementID) + ' ...')
+   subprocess.Popen([ './udpping', '-i', str(measurementID),
+                                   '-N', str(networkID),
+                                   '-I', interface ],
+                    close_fds=True)
