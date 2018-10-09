@@ -54,6 +54,8 @@ from ipaddress import ip_address
 
 
 # ###### Constants ##########################################################
+NODEID_FILE     = '/etc/nodeid'
+
 RTT_VALID_MIN   = 0      # Minimum valid RTT (in s)
 RTT_VALID_MAX   = 300    # Maximum valid RTT (in s)
 PAYLOAD_MAX     = 2048   # Maximum payload size (in B)
@@ -209,15 +211,22 @@ if options.uncompressed == True:
    compress = False
 
 if options.network_id:
-   # Assuming hostname is "nne<NNN>" with N of 1 to 3 digits!
-   hostname = socket.gethostname()
-   match    = re.search('^(nne)(\d{1,3})$', hostname)
-   if match:
-      nodeNumber = int(match.group(2))
-      sport      = 10000 + (10 * nodeNumber) + options.network_id
-   else:
-      sys.stderr.write('ERROR: Hostname is not "nne<NNN>"; try without network identifier!\n')
-      sys.exit(1)
+   # ------ Try to read node ID from file, if possible ----------------------
+   try:
+      nodeIDFile = open(NODEID_FILE)
+      nodeNumber = int(nodeIDFile.read())
+   # ------ Fallback: try to extract node ID from hostname ------------------
+   except:
+      # Assuming hostname is "nne<NNN>" with N of 1 to 3 digits!
+      hostname = socket.gethostname()
+      match    = re.search('^(nne)(\d{1,3})$', hostname)
+      if match:
+         nodeNumber = int(match.group(2))
+      else:
+         sys.stderr.write('ERROR: Hostname is not "nne<NNN>"; try without network identifier!\n')
+         sys.exit(1)
+
+      sport = 10000 + (10 * nodeNumber) + options.network_id
 else:
    sport = 0
 
