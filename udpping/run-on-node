@@ -1,12 +1,27 @@
 #!/bin/bash -e
 
+CONTAINER=dreibh/udpping
+
 WORKDIR=/run/shm/test0
 rm -rf $WORKDIR
 mkdir -p $WORKDIR
-echo '{ "node_id": "999", "instances": [ { "measurement_id": "99999", "interface": "op0", "network_id": "99" }, { "measurement_id": "99998", "interface": "op1", "network_id": "98" } ] }
+echo '{ "node_id": "58", "instances": [ { "measurement_id": "99999", "interface": "op0", "network_id": "99" }, { "measurement_id": "99998", "interface": "op1", "network_id": "98" } ] }
 ' >$WORKDIR/config
 mkdir -p $WORKDIR/results
 
 
 MONROE_NAMESPACE=$(docker ps --no-trunc -aqf name=monroe-namespace)
-docker run -d --name test0 --net=container:$MONROE_NAMESPACE -v $WORKDIR/results:/monroe/results -v $WORKDIR/config:/monroe/config:ro dreibh/udpping
+
+docker rm -f test0 >/dev/null 2>&1 || true
+
+sudo docker pull $CONTAINER
+docker run -d \
+   --name test0 \
+   --net=container:$MONROE_NAMESPACE \
+   --cap-add NET_ADMIN \
+   --cap-add NET_RAW \
+   --shm-size=1G \
+   -v $WORKDIR/results:/monroe/results \
+   -v $WORKDIR/config:/monroe/config:ro \
+   -v /etc/nodeid:/nodeid:ro \
+   $CONTAINER
