@@ -73,6 +73,7 @@ if myNodeID != nodeID:
 
 
 # ====== Start instances ====================================================
+processes = []
 for instance in instances:
    try:
       measurementID = int(instance['measurement_id'])
@@ -83,7 +84,13 @@ for instance in instances:
       sys.exit(1)
 
    print('Starting instance ' + str(measurementID) + ' ...')
-   subprocess.Popen([ '/opt/monroe/udpping', '-i', str(measurementID),
-                                             '-N', str(networkID),
-                                             '-I', interface ],
-                    close_fds=True)
+   process = subprocess.Popen([ '/opt/monroe/udpping', '-i', str(measurementID),
+                                                       '-N', str(networkID),
+                                                       '-I', interface ])
+   processes.append(process)
+
+
+print('Waiting ...')
+for process in processes:
+   process.wait()
+print('Finished!')
