@@ -69,8 +69,9 @@ DATA_DIRECTORY  = '/monroe/results/data'
 
 
 # ###### Global variables ###################################################
-running = True
-restart = False
+running  = True
+restart  = False
+compress = True
 
 
 # ###### Signal handler #####################################################
@@ -182,13 +183,14 @@ def CompressingRotator(source, dest):
 
 # ====== Handle arguments ===================================================
 ap = argparse.ArgumentParser(description='UDP Ping for NorNet Edge')
-ap.add_argument('-i', '--instance',   help="Measurement instance ID", type=int, required=True)
-ap.add_argument('-d', '--dport',      help='Destination port',        type=int, default=DEFAULT_DPORT)
-ap.add_argument('-D', '--daddr',      help='Destination IP',          type=ip_address, default=DEFAULT_DADDR)
-ap.add_argument('-I', '--iface',      help='Interface name',          required=True)
-ap.add_argument('-S', '--psize',      help='Payload size',            type=int, default=DEFAULT_PSIZE)
-ap.add_argument('-t', '--timeout',    help='Reply timeout',           type=int, default=DEFAULT_TIMEOUT)
-ap.add_argument('-N', '--network_id', help='Network identifier',      type=int, default=None)
+ap.add_argument('-i', '--instance',     help="Measurement instance ID",      type=int, required=True)
+ap.add_argument('-d', '--dport',        help='Destination port',             type=int, default=DEFAULT_DPORT)
+ap.add_argument('-D', '--daddr',        help='Destination IP',               type=ip_address, default=DEFAULT_DADDR)
+ap.add_argument('-I', '--iface',        help='Interface name',               required=True)
+ap.add_argument('-S', '--psize',        help='Payload size',                 type=int, default=DEFAULT_PSIZE)
+ap.add_argument('-t', '--timeout',      help='Reply timeout',                type=int, default=DEFAULT_TIMEOUT)
+ap.add_argument('-N', '--network_id',   help='Network identifier',           type=int, default=None)
+ap.add_argument('-u', '--uncompressed', help='Turn off results compression', action="store_true", default = False)
 options = ap.parse_args()
 
 if ((options.dport < 1) or (options.dport > 65535)):
@@ -203,6 +205,8 @@ if ((options.timeout < 1) or (options.timeout > 24*3600)):
 if ((options.network_id != None) and ((options.network_id < 0) or (options.network_id > 999))):
    sys.stderr.write('ERROR: Invalid network identifier!\n')
    sys.exit(1)
+if options.uncompressed == True:
+   compress = False
 
 if options.network_id:
    # Assuming hostname is "nne<NNN>" with N of 1 to 3 digits!
@@ -270,8 +274,9 @@ MBBM_LOGGING_CONF = {
 
 logging.config.dictConfig(MBBM_LOGGING_CONF)
 mlogger = logging.getLogger('mbbm')
-for loghandler in mlogger.handlers[:]:
-   loghandler.rotator = CompressingRotator
+if compress == True:
+   for loghandler in mlogger.handlers[:]:
+      loghandler.rotator = CompressingRotator
 
 
 # ====== Initialise mutex and signal handlers ===============================
