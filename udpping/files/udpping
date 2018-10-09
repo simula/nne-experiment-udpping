@@ -54,7 +54,7 @@ from ipaddress import ip_address
 
 
 # ###### Constants ##########################################################
-NODEID_FILE     = '/etc/nodeid'
+NODEID_FILE     = '/nodeid'
 
 RTT_VALID_MIN   = 0      # Minimum valid RTT (in s)
 RTT_VALID_MAX   = 300    # Maximum valid RTT (in s)

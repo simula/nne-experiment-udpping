@@ -38,8 +38,8 @@ import sys
 import subprocess
 
 
-NODEID_FILE = '/etc/nodeid'
-CONFIG_FILE = 'config'
+NODEID_FILE = '/nodeid'
+CONFIG_FILE = '/monroe/config'
 
 
 # ====== Check node ID ======================================================
@@ -60,10 +60,15 @@ except:
    sys.exit(1)
 
 try:
-   myNodeID  = configuration['node_id']
+   myNodeID  = int(configuration['node_id'])
    instances = configuration['instances']
 except:
    sys.stderr.write('Invalid node ID or instances in ' + CONFIG_FILE + '!\n')
+   sys.exit(1)
+
+if myNodeID != nodeID:
+   sys.stderr.write('Configuration seems to be for different node: ' + \
+                    str(nodeID) + ' != ' + str(myNodeID) + '!\n')
    sys.exit(1)
 
 
@@ -78,7 +83,7 @@ for instance in instances:
       sys.exit(1)
 
    print('Starting instance ' + str(measurementID) + ' ...')
-   subprocess.Popen([ './udpping', '-i', str(measurementID),
-                                   '-N', str(networkID),
-                                   '-I', interface ],
+   subprocess.Popen([ '/opt/monroe/udpping', '-i', str(measurementID),
+                                             '-N', str(networkID),
+                                             '-I', interface ],
                     close_fds=True)
