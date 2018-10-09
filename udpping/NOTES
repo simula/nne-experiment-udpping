@@ -1,0 +1,6 @@
+Measurement ID Query:
+
+select * from measurement_instance
+where
+   node_id = 864 and
+   measurement_desc_id in (select id from measurement_descriptor where name = 'RTT measurement')
