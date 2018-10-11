@@ -84,23 +84,24 @@ lsyncdidentity.close()
 lsyncdconf = open(LSYNCD_CONFIG_FILE, 'w')
 lsyncdconf.write(
 """
-settings = {
-   logfile    = "/tmp/lsyncd.log",
-   statusFile = "/tmp/lsyncd.status"
+settings {
+   logfile    = "/var/log/lsyncd.log",
+   statusFile = "/var/log/lsyncd.status",
+   insist     = true
 }
 
 sync {
    default.rsyncssh,
    source    = "/monroe/results/data/",
-   host      = """ + '"nne@ ' + syncServer + '",' + """
-   targetdir = "/tmp/""" +  str(nodeID) + """/",
+   host      = """ + '"nne@' + syncServer + '",' + """
+   targetdir = "/nne/data/""" +  str(nodeID) + """/",
    delete    = false,
    exclude   = { "/*.dat", "/*.sdat", "/.*" },
-   maxDelays = 1,
+   maxDelays = 15,
    ssh = {
       port         = 22,
-      identityFile = """ + '"' + LSYNCD_IDENTITY_FILE + '"' + """
-      _extra       = { "-oStrictHostKeyChecking=no", "-oVerifyHostKeyDNS=yes" }
+      identityFile = """ + '"' + LSYNCD_IDENTITY_FILE + '"' + """,
+      _extra       = { "-oVerifyHostKeyDNS=yes", "-oStrictHostKeyChecking=no" }
    },
    rsync = {
       archive  = true,
@@ -112,6 +113,7 @@ sync {
 lsyncdconf.close()
 
 subprocess.call(['service', 'lsyncd', 'stop'])
+subprocess.call(['mkdir', '-p', '/monroe/results/data/'])
 subprocess.call(['service', 'lsyncd', 'start'])
 
 
