@@ -85,27 +85,24 @@ lsyncdconf = open(LSYNCD_CONFIG_FILE, 'w')
 lsyncdconf.write(
 """
 settings {
-   logfile    = "/var/log/lsyncd.log",
-   statusFile = "/var/log/lsyncd.status",
-   insist     = true
+   logfile        = "/var/log/lsyncd.log",
+   statusFile     = "/var/log/lsyncd.status",
+   insist         = true,
+   log            = "scarce",
+   statusInterval = 60
 }
 
 sync {
-   default.rsyncssh,
+   default.rsync,
    source    = "/monroe/results/data/",
-   host      = """ + '"nne@' + syncServer + '",' + """
-   targetdir = "/nne/data/""" +  str(nodeID) + """/",
+   target    = """ + '"nne@' + syncServer + ':/nne/data/' + str(nodeID) + '"' + """,
    delete    = false,
    exclude   = { "/*.dat", "/*.sdat", "/.*" },
    maxDelays = 15,
-   ssh = {
-      port         = 22,
-      identityFile = """ + '"' + LSYNCD_IDENTITY_FILE + '"' + """,
-      _extra       = { "-oVerifyHostKeyDNS=yes", "-oStrictHostKeyChecking=no" }
-   },
    rsync = {
       archive  = true,
-      compress = false,
+      compress = true,
+      rsh      = "/usr/bin/ssh -p22 -i""" + LSYNCD_IDENTITY_FILE + """ -oVerifyHostKeyDNS=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/root/.ssh/known_hosts -oPasswordAuthentication=no",
       _extra   = { "--remove-source-files" }
    }
 }

@@ -69,4 +69,4 @@ docker run \
 sleep 1
 
 echo "Shell:"
-docker exec -i -t ${TESTNAME} /bin/bash
+docker exec --interactive=true --tty=true ${TESTNAME} /bin/bash
