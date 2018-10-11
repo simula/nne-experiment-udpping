@@ -82,18 +82,37 @@ lsyncdidentity.write(syncIdentity + '\n')
 lsyncdidentity.close()
 
 lsyncdconf = open(LSYNCD_CONFIG_FILE, 'w')
-lsyncdconf.write("""sync {
-  default.rsync,
-  nodaemon  = true,
-  source    = "/nne/data/",
-  target    = """ + '"' + syncServer + ':/monroe/results/data' + str(nodeID) + '",' + """
-  rsyncOpts = { "-az", "--remove-source-files", "-e", "ssh -i """ + LSYNCD_IDENTITY_FILE + """ -l nne -p 22 -o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPath=/tmp/ssh-%r@%h:%p -o ControlPersist=yes" },
-  maxDelays = 1,
-  delete    = false,
-  exclude   = { "/*.dat", "/*.sdat", "/*.dat.*.bz2", "/*.sdat.*.bz2", "/.*" }
+lsyncdconf.write(
+"""
+settings = {
+   logfile    = "/tmp/lsyncd.log",
+   statusFile = "/tmp/lsyncd.status"
+}
+
+sync {
+   default.rsyncssh,
+   source    = "/monroe/results/data/",
+   host      = """ + '"nne@ ' + syncServer + '",' + """
+   targetdir = "/tmp/""" +  str(nodeID) + """/",
+   delete    = false,
+   exclude   = { "/*.dat", "/*.sdat", "/.*" },
+   maxDelays = 1,
+   ssh = {
+      port         = 22,
+      identityFile = """ + '"' + LSYNCD_IDENTITY_FILE + '"' + """
+      _extra       = { "-oStrictHostKeyChecking=no", "-oVerifyHostKeyDNS=yes" }
+   },
+   rsync = {
+      archive  = true,
+      compress = false,
+      _extra   = { "--remove-source-files" }
+   }
 }
 """)
 lsyncdconf.close()
+
+subprocess.call(['service', 'lsyncd', 'stop'])
+subprocess.call(['service', 'lsyncd', 'start'])
 
 
 # ====== Start instances ====================================================
