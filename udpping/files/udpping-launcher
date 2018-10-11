@@ -38,8 +38,10 @@ import sys
 import subprocess
 
 
-NODEID_FILE = '/nodeid'
-CONFIG_FILE = '/monroe/config'
+NODEID_FILE          = '/nodeid'
+CONFIG_FILE          = '/monroe/config'
+LSYNCD_CONFIG_FILE   = '/etc/lsyncd/lsyncd.conf.lua'
+LSYNCD_IDENTITY_FILE = '/etc/lsyncd/id_lsyncd.pub'
 
 
 # ====== Check node ID ======================================================
@@ -60,16 +62,38 @@ except:
    sys.exit(1)
 
 try:
-   myNodeID  = int(configuration['node_id'])
-   instances = configuration['instances']
+   myNodeID     = int(configuration['node_id'])
+   instances    = configuration['instances']
+   syncServer   = configuration['sync_server']
+   syncIdentity = configuration['sync_identity']
 except:
-   sys.stderr.write('Invalid node ID or instances in ' + CONFIG_FILE + '!\n')
+   sys.stderr.write('Invalid or incomplete configuration in ' + CONFIG_FILE + '!\n')
    sys.exit(1)
 
 if myNodeID != nodeID:
    sys.stderr.write('Configuration seems to be for different node: ' + \
                     str(nodeID) + ' != ' + str(myNodeID) + '!\n')
    sys.exit(1)
+
+
+# ====== Configure lsyncd ===================================================
+lsyncdidentity = open(LSYNCD_IDENTITY_FILE, 'w')
+lsyncdidentity.write(syncIdentity + '\n')
+lsyncdidentity.close()
+
+lsyncdconf = open(LSYNCD_CONFIG_FILE, 'w')
+lsyncdconf.write("""sync {
+  default.rsync,
+  nodaemon  = true,
+  source    = "/nne/data/",
+  target    = """ + '"' + syncServer + ':/monroe/results/data' + str(nodeID) + '",' + """
+  rsyncOpts = { "-az", "--remove-source-files", "-e", "ssh -i """ + LSYNCD_IDENTITY_FILE + """ -l nne -p 22 -o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPath=/tmp/ssh-%r@%h:%p -o ControlPersist=yes" },
+  maxDelays = 1,
+  delete    = false,
+  exclude   = { "/*.dat", "/*.sdat", "/*.dat.*.bz2", "/*.sdat.*.bz2", "/.*" }
+}
+""")
+lsyncdconf.close()
 
 
 # ====== Start instances ====================================================
