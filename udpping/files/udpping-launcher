@@ -69,7 +69,7 @@ try:
    syncIdentity = configuration['sync_identity']
    for instance in instances:
       measurementID = int(instance['measurement_id'])
-      interface     = instance['interface']
+      iccid         = instance['iccid']
       networkID     = int(instance['network_id'])
 except:
    sys.stderr.write('Invalid or incomplete configuration in ' + CONFIG_FILE + '!\n')
@@ -134,9 +134,6 @@ while len(instances) > 0:
    try:
       topic    = data[0]
       metadata = json.loads(data[1])
-      print(topic)
-      print(metadata)
-      sys.stdout.flush()
    except Exception as e:
       sys.stderr.write('WARNING: Cannot read metadata: ' + str(e) + '\n')
       topic    = None
@@ -157,13 +154,13 @@ while len(instances) > 0:
       for instance in instances:
          if iccid == instance['iccid']:
             measurementID = int(instance['measurement_id'])
-            interface     = instance['interface']
+            iccid         = instance['iccid']
             networkID     = int(instance['network_id'])
 
             print('Starting instance ' + str(measurementID) + ' on ' + intIF + ' ...')
             process = subprocess.Popen([ '/opt/monroe/udpping', '-i', str(measurementID),
                                                                '-N', str(networkID),
-                                                               '-I', interface ])
+                                                               '-I', intIF ])
             processes.append(process)
 
             instances.remove(instance)
