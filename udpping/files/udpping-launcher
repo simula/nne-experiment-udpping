@@ -36,6 +36,7 @@
 import json
 import sys
 import subprocess
+import zmq
 
 
 NODEID_FILE          = '/nodeid'
@@ -66,6 +67,10 @@ try:
    instances    = configuration['instances']
    syncServer   = configuration['sync_server']
    syncIdentity = configuration['sync_identity']
+   for instance in instances:
+      measurementID = int(instance['measurement_id'])
+      interface     = instance['interface']
+      networkID     = int(instance['network_id'])
 except:
    sys.stderr.write('Invalid or incomplete configuration in ' + CONFIG_FILE + '!\n')
    sys.exit(1)
@@ -102,7 +107,7 @@ sync {
    rsync = {
       archive  = true,
       compress = true,
-      rsh      = "/usr/bin/ssh -p22 -i""" + LSYNCD_IDENTITY_FILE + """ -oVerifyHostKeyDNS=yes -oStrictHostKeyChecking=no -oUserKnownHostsFile=/root/.ssh/known_hosts -oPasswordAuthentication=no",
+      rsh      = "/usr/bin/ssh -p22 -i""" + LSYNCD_IDENTITY_FILE + """ -oVerifyHostKeyDNS=yes -oStrictHostKeyChecking=no -oPasswordAuthentication=no",
       _extra   = { "--remove-source-files" }
    }
 }
@@ -114,22 +119,55 @@ subprocess.call(['mkdir', '-p', '/monroe/results/data/'])
 subprocess.call(['service', 'lsyncd', 'start'])
 
 
+# ====== Initialise ZeroMQ metadata stream ==================================
+context = zmq.Context()
+socket = context.socket(zmq.SUB)
+socket.connect ("tcp://172.17.0.1:5556")
+socket.setsockopt_string(zmq.SUBSCRIBE, 'MONROE.META.DEVICE.MODEM')
+
+
 # ====== Start instances ====================================================
 processes = []
-for instance in instances:
+while len(instances) > 0:
+   # ------ Read metadata ---------------------------------------------------
+   data = socket.recv().decode('utf-8').split(' ', 1)
    try:
-      measurementID = int(instance['measurement_id'])
-      interface     = instance['interface']
-      networkID     = int(instance['network_id'])
-   except:
-      sys.stderr.write('Invalid instance definition in ' + CONFIG_FILE + '!\n')
-      sys.exit(1)
+      topic    = data[0]
+      metadata = json.loads(data[1])
+      print(topic)
+      print(metadata)
+      sys.stdout.flush()
+   except Exception as e:
+      sys.stderr.write('WARNING: Cannot read metadata: ' + str(e) + '\n')
+      topic    = None
+      metadata = None
 
-   print('Starting instance ' + str(measurementID) + ' ...')
-   process = subprocess.Popen([ '/opt/monroe/udpping', '-i', str(measurementID),
-                                                       '-N', str(networkID),
-                                                       '-I', interface ])
-   processes.append(process)
+   # ------ Extract ICCID and InternalInterface -----------------------------
+   if topic.startswith('MONROE.META.DEVICE.MODEM'):
+      try:
+         iccid = metadata['ICCID']
+         intIF = metadata['InternalInterface']
+      except Exception as e:
+         sys.stderr.write('WARNING: Cannot read MONROE.META.DEVICE.MODEM: ' + str(e) + '\n')
+         iccid = None
+         intIF = None
+
+   # ------ Try to start instance, if not yet started -----------------------
+   if iccid != None:
+      for instance in instances:
+         if iccid == instance['iccid']:
+            measurementID = int(instance['measurement_id'])
+            interface     = instance['interface']
+            networkID     = int(instance['network_id'])
+
+            print('Starting instance ' + str(measurementID) + ' on ' + intIF + ' ...')
+            process = subprocess.Popen([ '/opt/monroe/udpping', '-i', str(measurementID),
+                                                               '-N', str(networkID),
+                                                               '-I', interface ])
+            processes.append(process)
+
+            instances.remove(instance)
+            break
 
 
 print('Waiting ...')
