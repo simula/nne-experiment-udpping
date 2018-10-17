@@ -38,6 +38,7 @@
 # python3-netifaces python3-zmq
 
 import argparse
+import bz2
 import datetime
 import logging
 import logging.config
@@ -49,7 +50,6 @@ import socket
 import sys
 import threading
 import time
-import bz2
 from ipaddress import ip_address
 
 
@@ -300,7 +300,7 @@ signal.signal(signal.SIGTERM, signalHandler)
 
 # ====== Main loop ==========================================================
 seqNumber = 1
-while running:
+while running == True:
    try:
       # ====== Clean-up previous round, if necessary ========================
       if udpSocket:
