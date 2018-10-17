@@ -33,50 +33,247 @@
 # Contact: dreibh@simula.no
 
 
-import zmq
-import sys
+import argparse
+import bz2
 import json
+import logging
+import logging.config
+import re
+import signal
+import os
+import sys
+import threading
+import time
+import zmq
+
+
+# ###### Constants ##########################################################
+NODEID_FILE     = '/nodeid'
+
+LOG_DIRECTORY   = '/tmp/monroe/results/log'
+DATA_DIRECTORY  = '/tmp/monroe/results/data'
+
+
+# ###### Global variables ###################################################
+running          = True
+compress         = True
+iccidToNetworkID = {}
+
+
+# ###### Signal handler #####################################################
+def signalHandler(signum, frame):
+   global running
+   running = False
+   print("H!")
+
+
+# ###### Receiver thread ####################################################
+class Receiver(threading.Thread):
+   # ###### Constructor #####################################################
+   def __init__(self, zmqSocket):
+      threading.Thread.__init__(self)
+      self.zmqSocket = zmqSocket
+      #self.zmqSocket.settimeout(1)
+      self.terminate = threading.Event()
+
+   # ###### Main loop #######################################################
+   def run(self):
+      global running
+      logging.info("Starting receiver thread")
+
+      poller = zmq.Poller()
+      poller.register(self.zmqSocket, zmq.POLLIN)
+
+      # ====== Reception loop ===============================================
+      while running and not self.terminate.is_set():
+         print("W...")
+         pollResult = poller.poll(1000)
+         print("ok!")
+         if self.zmqSocket in pollResult and pollResult[self.zmqSocket] == zmq.POLLIN:
+            try:
+               data = self.zmqSocket.recv().decode('utf-8').split(' ', 1)
+               topic    = data[0]
+               metadata = json.loads(data[1])
+               print(topic)
+               print(metadata)
+               sys.stdout.flush()
+            except Exception as e:
+               sys.stderr.write('WARNING: Cannot read metadata: ' + str(e) + '\n')
+               topic    = None
+               metadata = None
+
+            if topic.startswith('MONROE.META.DEVICE.MODEM'):
+               try:
+                  iccid = metadata['ICCID']
+                  intIF = metadata['InternalInterface']
+               except Exception as e:
+                  sys.stderr.write('WARNING: Cannot read MONROE.META.DEVICE.MODEM: ' + str(e) + '\n')
+                  iccid = None
+                  intIF = None
+
+            if iccid != None:
+               print('ESSID=', iccid)
+               for instance in instances:
+                  if iccid == instance['iccid']:
+                     print('Starting instance ' + str(instance['measurement_id']) + ' on ' + intIF)
+                     instances.remove(instance)
+                     break
+
+      # ====== Shut down ====================================================
+      logging.debug("Stopping receiver thread")
+
+
+# ###### Compressing log rotator ############################################
+def CompressingRotator(source, dest):
+   os.rename(source, dest)
+   f_in = open(dest, 'rb')
+   f_out = bz2.BZ2File("%s.bz2" % dest, 'wb')
+   f_out.writelines(f_in)
+   f_out.close()
+   f_in.close()
+   os.remove(dest)
+
+
+
+# ###### Main program #######################################################
+
+# ====== Handle arguments ===================================================
+ap = argparse.ArgumentParser(description='Metadata Collector for NorNet Edge')
+ap.add_argument('mappings', type=str, nargs='+', help='Set network identifier to ICCID mapping')
+ap.add_argument('-u', '--uncompressed', help='Turn off results compression', action="store_true", default = False)
+options = ap.parse_args()
+
+if options.uncompressed == True:
+   compress = False
+
+for mapping in options.mappings:
+   try:
+      opt = mapping.split(':')
+      networkID = int(opt[0])
+      iccid     = opt[1]
+   except Exception as e:
+      sys.stderr.write('Bad mapping: ' + mapping + '!\n')
+      sys.exit(1)
+
+   print('Mapping: ' + iccid + ' -> ' + str(networkID) + ' ' + str(len(iccid)))
+   if not re.match(r'^[0-9]{19,20}$', iccid):
+      sys.stderr.write('WARNING: Probably bad ICCID ' + iccid + '!\n')
+
+
+# ====== Make sure the output directories exist =============================
+for directory in [ LOG_DIRECTORY, DATA_DIRECTORY ]:
+   try:
+      os.makedirs(directory, 0o755, True)
+   except Exception as e:
+      sys.stderr.write('ERROR: Unable to create directory ' + directory + ': ' +
+                       str(e) + '\n')
+      sys.exit(1)
+
+
+# ====== Initialise logger ==================================================
+MBBM_LOGGING_CONF = {
+   'version': 1,
+   'handlers': {
+      'default': {
+         'level': 'DEBUG',
+         'class': 'logging.handlers.TimedRotatingFileHandler',
+         'formatter': 'standard',
+         'filename': LOG_DIRECTORY + '/metadatacollector.log',
+         'when': 'D'
+      },
+      'mbbm': {
+         'level': 'DEBUG',
+         'class': 'logging.handlers.TimedRotatingFileHandler',
+         'formatter': 'mbbm',
+         'filename': DATA_DIRECTORY + '/metadatacollector.dat',
+         'when': 'S',
+         'interval': 15,
+      }
+   },
+   'formatters': {
+      'standard': {
+         'format': '%(asctime)s %(levelname)s [PID=%(process)d] %(message)s'
+      },
+      'mbbm': {
+         'format': '%(message)s',
+      }
+   },
+   'loggers': {
+      'mbbm': {
+         'handlers': ['mbbm'],
+         'level': 'DEBUG',
+         'propagate': False,
+      }
+   },
+   'root': {
+      'level': 'DEBUG',
+      'handlers': ['default'],
+   }
+}
+
+logging.config.dictConfig(MBBM_LOGGING_CONF)
+mlogger = logging.getLogger('mbbm')
+if compress == True:
+   for loghandler in mlogger.handlers[:]:
+      loghandler.rotator = CompressingRotator
+
 
 # ====== Initialise ZeroMQ metadata stream ==================================
 context = zmq.Context()
-socket = context.socket(zmq.SUB)
-socket.connect ("tcp://172.17.0.1:5556")
-socket.setsockopt_string(zmq.SUBSCRIBE, 'MONROE.META.DEVICE.MODEM')
+zmqSocket = context.socket(zmq.SUB)
+zmqSocket.connect ("tcp://172.17.0.1:5556")
+zmqSocket.setsockopt_string(zmq.SUBSCRIBE, 'MONROE.META.DEVICE.MODEM')
 
-instances = [ {'iccid':                 '1234', 'measurement_id': 10000 },
-              {'iccid': '89470000160401348264', 'measurement_id': 10001 },
-              {'iccid': '89470715000003314007', 'measurement_id': 10002 },
-              {'iccid': '8947080037001158277',  'measurement_id': 10003 }
-            ]
 
-while len(instances) > 0:
-   data = socket.recv().decode('utf-8').split(' ', 1)
-   try:
-      topic    = data[0]
-      metadata = json.loads(data[1])
-      print(topic)
-      print(metadata)
-      sys.stdout.flush()
-   except Exception as e:
-      sys.stderr.write('WARNING: Cannot read metadata: ' + str(e) + '\n')
-      topic    = None
-      metadata = None
+# ====== Initialise signal handlers =========================================
+signal.signal(signal.SIGINT,  signalHandler)
+signal.signal(signal.SIGTERM, signalHandler)
 
-   if topic.startswith('MONROE.META.DEVICE.MODEM'):
-      try:
-         iccid = metadata['ICCID']
-         intIF = metadata['InternalInterface']
-      except Exception as e:
-         sys.stderr.write('WARNING: Cannot read MONROE.META.DEVICE.MODEM: ' + str(e) + '\n')
-         iccid = None
-         intIF = None
 
-   if iccid != None:
-      print('ESSID=', iccid)
-      for instance in instances:
-         if iccid == instance['iccid']:
-            print('Starting instance ' + str(instance['measurement_id']) + ' on ' + intIF)
-            instances.remove(instance)
-            break
+# ====== Create receiver thread =============================================
+receiver = Receiver(zmqSocket)
+receiver.start()
 
-   print(len(instances))
+
+# ====== Shut down ==========================================================
+while running:
+   print("-")
+   time.sleep(1)
+print("C")
+receiver.terminate()
+receiver.join()
+logging.debug("Exiting")
+
+
+## ====== Main loop ==========================================================
+#while running == True:
+   #try:
+      #data = socket.recv().decode('utf-8').split(' ', 1)
+      #topic    = data[0]
+      #metadata = json.loads(data[1])
+      #print(topic)
+      #print(metadata)
+      #sys.stdout.flush()
+   #except Exception as e:
+      #sys.stderr.write('WARNING: Cannot read metadata: ' + str(e) + '\n')
+      #topic    = None
+      #metadata = None
+
+   #if topic.startswith('MONROE.META.DEVICE.MODEM'):
+      #try:
+         #iccid = metadata['ICCID']
+         #intIF = metadata['InternalInterface']
+      #except Exception as e:
+         #sys.stderr.write('WARNING: Cannot read MONROE.META.DEVICE.MODEM: ' + str(e) + '\n')
+         #iccid = None
+         #intIF = None
+
+   #if iccid != None:
+      #print('ESSID=', iccid)
+      #for instance in instances:
+         #if iccid == instance['iccid']:
+            #print('Starting instance ' + str(instance['measurement_id']) + ' on ' + intIF)
+            #instances.remove(instance)
+            #break
+
+   #print(len(instances))
