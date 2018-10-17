@@ -64,63 +64,6 @@ iccidToNetworkID = {}
 def signalHandler(signum, frame):
    global running
    running = False
-   print("H!")
-
-
-# ###### Receiver thread ####################################################
-class Receiver(threading.Thread):
-   # ###### Constructor #####################################################
-   def __init__(self, zmqSocket):
-      threading.Thread.__init__(self)
-      self.zmqSocket = zmqSocket
-      #self.zmqSocket.settimeout(1)
-      self.terminate = threading.Event()
-
-   # ###### Main loop #######################################################
-   def run(self):
-      global running
-      logging.info("Starting receiver thread")
-
-      poller = zmq.Poller()
-      poller.register(self.zmqSocket, zmq.POLLIN)
-
-      # ====== Reception loop ===============================================
-      while running and not self.terminate.is_set():
-         print("W...")
-         pollResult = poller.poll(1000)
-         print("ok!")
-         if self.zmqSocket in pollResult and pollResult[self.zmqSocket] == zmq.POLLIN:
-            try:
-               data = self.zmqSocket.recv().decode('utf-8').split(' ', 1)
-               topic    = data[0]
-               metadata = json.loads(data[1])
-               print(topic)
-               print(metadata)
-               sys.stdout.flush()
-            except Exception as e:
-               sys.stderr.write('WARNING: Cannot read metadata: ' + str(e) + '\n')
-               topic    = None
-               metadata = None
-
-            if topic.startswith('MONROE.META.DEVICE.MODEM'):
-               try:
-                  iccid = metadata['ICCID']
-                  intIF = metadata['InternalInterface']
-               except Exception as e:
-                  sys.stderr.write('WARNING: Cannot read MONROE.META.DEVICE.MODEM: ' + str(e) + '\n')
-                  iccid = None
-                  intIF = None
-
-            if iccid != None:
-               print('ESSID=', iccid)
-               for instance in instances:
-                  if iccid == instance['iccid']:
-                     print('Starting instance ' + str(instance['measurement_id']) + ' on ' + intIF)
-                     instances.remove(instance)
-                     break
-
-      # ====== Shut down ====================================================
-      logging.debug("Stopping receiver thread")
 
 
 # ###### Compressing log rotator ############################################
@@ -223,6 +166,8 @@ context = zmq.Context()
 zmqSocket = context.socket(zmq.SUB)
 zmqSocket.connect ("tcp://172.17.0.1:5556")
 zmqSocket.setsockopt_string(zmq.SUBSCRIBE, 'MONROE.META.DEVICE.MODEM')
+poller = zmq.Poller()
+poller.register(zmqSocket, zmq.POLLIN)
 
 
 # ====== Initialise signal handlers =========================================
@@ -230,50 +175,39 @@ signal.signal(signal.SIGINT,  signalHandler)
 signal.signal(signal.SIGTERM, signalHandler)
 
 
-# ====== Create receiver thread =============================================
-receiver = Receiver(zmqSocket)
-receiver.start()
+# ====== Main loop ==========================================================
+logging.debug("Starting")
 
+while running == True:
+   pollResult = poller.poll(1000)
+   if zmqSocket in pollResult and pollResult[zmqSocket] == zmq.POLLIN:
+      try:
+         data = zmqSocket.recv().decode('utf-8').split(' ', 1)
+         topic    = data[0]
+         metadata = json.loads(data[1])
+         print(topic)
+         print(metadata)
+         sys.stdout.flush()
+      except Exception as e:
+         logging.warning('Cannot read metadata: ' + str(e))
+         topic    = None
+         metadata = None
 
-# ====== Shut down ==========================================================
-while running:
-   print("-")
-   time.sleep(1)
-print("C")
-receiver.terminate()
-receiver.join()
-logging.debug("Exiting")
+      if (topic != None) and (topic.startswith('MONROE.META.DEVICE.MODEM')):
+         try:
+            iccid = metadata['ICCID']
+            intIF = metadata['InternalInterface']
+         except Exception as e:
+            logging.warning('Cannot read MONROE.META.DEVICE.MODEM: ' + str(e))
+            iccid = None
+            intIF = None
 
+         if iccid != None:
+            print('ESSID=', iccid)
+            for instance in instances:
+               if iccid == instance['iccid']:
+                  print('Starting instance ' + str(instance['measurement_id']) + ' on ' + intIF)
+                  instances.remove(instance)
+                  break
 
-## ====== Main loop ==========================================================
-#while running == True:
-   #try:
-      #data = socket.recv().decode('utf-8').split(' ', 1)
-      #topic    = data[0]
-      #metadata = json.loads(data[1])
-      #print(topic)
-      #print(metadata)
-      #sys.stdout.flush()
-   #except Exception as e:
-      #sys.stderr.write('WARNING: Cannot read metadata: ' + str(e) + '\n')
-      #topic    = None
-      #metadata = None
-
-   #if topic.startswith('MONROE.META.DEVICE.MODEM'):
-      #try:
-         #iccid = metadata['ICCID']
-         #intIF = metadata['InternalInterface']
-      #except Exception as e:
-         #sys.stderr.write('WARNING: Cannot read MONROE.META.DEVICE.MODEM: ' + str(e) + '\n')
-         #iccid = None
-         #intIF = None
-
-   #if iccid != None:
-      #print('ESSID=', iccid)
-      #for instance in instances:
-         #if iccid == instance['iccid']:
-            #print('Starting instance ' + str(instance['measurement_id']) + ' on ' + intIF)
-            #instances.remove(instance)
-            #break
-
-   #print(len(instances))
+logging.debug("Stopping")
