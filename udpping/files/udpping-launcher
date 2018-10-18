@@ -64,13 +64,8 @@ except:
 
 try:
    myNodeID     = int(configuration['node_id'])
-   instances    = configuration['instances']
    syncServer   = configuration['sync_server']
    syncIdentity = configuration['sync_identity']
-   for instance in instances:
-      measurementID = int(instance['measurement_id'])
-      iccid         = instance['iccid']
-      networkID     = int(instance['network_id'])
 except:
    sys.stderr.write('Invalid or incomplete configuration in ' + CONFIG_FILE + '!\n')
    sys.exit(1)
@@ -127,8 +122,8 @@ socket.setsockopt_string(zmq.SUBSCRIBE, 'MONROE.META.DEVICE.MODEM')
 
 
 # ====== Start instances ====================================================
-processes = []
-while len(instances) > 0:
+processes = {}
+while True:
    # ------ Read metadata ---------------------------------------------------
    data = socket.recv().decode('utf-8').split(' ', 1)
    try:
@@ -144,30 +139,28 @@ while len(instances) > 0:
       try:
          iccid = metadata['ICCID']
          intIF = metadata['InternalInterface']
+         mcc   = 505   # FIXME!
+         mnc   = 90    # FIXME!
       except Exception as e:
          sys.stderr.write('WARNING: Cannot read MONROE.META.DEVICE.MODEM: ' + str(e) + '\n')
          iccid = None
          intIF = None
+         mcc   = None
+         mnc   = None
 
    # ------ Try to start instance, if not yet started -----------------------
    if iccid != None:
-      for instance in instances:
-         if iccid == instance['iccid']:
-            measurementID = int(instance['measurement_id'])
-            iccid         = instance['iccid']
-            networkID     = int(instance['network_id'])
+      if iccid in processes:
+         if processes[iccid].joinable():
+            processes[iccid].join()
+            processes[iccid].remove(iccid)
+            sys.stderr.write('WARNING: Instance for ICCID ' + iccid + ' has stopped!\n')
 
-            print('Starting instance ' + str(measurementID) + ' on ' + intIF + ' ...')
-            process = subprocess.Popen([ '/opt/monroe/udpping', '-i', str(measurementID),
-                                                               '-N', str(networkID),
-                                                               '-I', intIF ])
-            processes.append(process)
+      if not iccid in processes:
+         iccid      = instance['iccid']
+         identifier = '%03d:%02d'.format(mcc, mnc)
 
-            instances.remove(instance)
-            break
-
-
-print('Waiting ...')
-for process in processes:
-   process.wait()
-print('Finished!')
+         print('Starting instance ' + str(measurementID) + ' on ' + intIF + ' ...')
+         processes[iccid] = subprocess.Popen([ '/opt/monroe/udpping', '-i', str(identifier),
+                                                                      '-I', intIF ])
+         sys.stderr.write('Started instance for ICCID ' + iccid + '\n')
