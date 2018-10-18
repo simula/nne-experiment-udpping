@@ -129,7 +129,7 @@ class Receiver(threading.Thread):
             # ====== Log result =============================================
             mlogger.info(
                '%s\t%d\t%d\t<d e="%d"><rtt>%.6f</rtt></d>',
-               sendTimeStampString, options.instance, int(seqNumber), e, rtt
+               sendTimeStampString, options.identifier, int(seqNumber), e, rtt
             )
 
          # ====== Error handling ============================================
@@ -157,8 +157,8 @@ class Receiver(threading.Thread):
                   sendTimeStampString = \
                      datetime.datetime.utcfromtimestamp(sendTimeStamp).strftime('%Y-%m-%d %H:%M:%S.%f')
                   mlogger.info(
-                     '%s\t%d\t%d\t<d e="0"/>',
-                     sendTimeStampString, options.instance, int(seqNumber)
+                     '%s\t%s\t%d\t<d e="0"/>',
+                     sendTimeStampString, options.identifier, int(seqNumber)
                   )
                   with self.lock:
                      del self.requests[payload]
@@ -185,16 +185,22 @@ def CompressingRotator(source, dest):
 
 # ====== Handle arguments ===================================================
 ap = argparse.ArgumentParser(description='UDP Ping for NorNet Edge')
-ap.add_argument('-i', '--instance',     help="Measurement instance ID",      type=int, required=True)
+ap.add_argument('-i', '--identifier',   help="Identifier as MCC:MNC",        type=str, required=True)
+ap.add_argument('-s', '--sport',        help='Source port',                  type=int, default=0)
 ap.add_argument('-d', '--dport',        help='Destination port',             type=int, default=DEFAULT_DPORT)
 ap.add_argument('-D', '--daddr',        help='Destination IP',               type=ip_address, default=DEFAULT_DADDR)
 ap.add_argument('-I', '--iface',        help='Interface name',               required=True)
 ap.add_argument('-S', '--psize',        help='Payload size',                 type=int, default=DEFAULT_PSIZE)
 ap.add_argument('-t', '--timeout',      help='Reply timeout',                type=int, default=DEFAULT_TIMEOUT)
-ap.add_argument('-N', '--network_id',   help='Network identifier',           type=int, default=None)
 ap.add_argument('-u', '--uncompressed', help='Turn off results compression', action="store_true", default = False)
 options = ap.parse_args()
 
+if not re.match(r'^(\d{3})[:](\d{2})$', options.identifier):
+   sys.stderr.write('WARNING: Identifier ' + options.identifier + ' is not in MCC:NMC format!\n')
+   sys.exit(1)
+if ((options.sport < 0) or (options.sport > 65535)):
+   sys.stderr.write('ERROR: Invalid source port!\n')
+   sys.exit(1)
 if ((options.dport < 1) or (options.dport > 65535)):
    sys.stderr.write('ERROR: Invalid destination port!\n')
    sys.exit(1)
@@ -204,31 +210,8 @@ if ((options.psize < 16) or (options.psize > PAYLOAD_MAX)):
 if ((options.timeout < 1) or (options.timeout > 24*3600)):
    sys.stderr.write('ERROR: Invalid reply timeout!\n')
    sys.exit(1)
-if ((options.network_id != None) and ((options.network_id < 0) or (options.network_id > 999))):
-   sys.stderr.write('ERROR: Invalid network identifier!\n')
-   sys.exit(1)
 if options.uncompressed == True:
    compress = False
-
-if options.network_id:
-   # ------ Try to read node ID from file, if possible ----------------------
-   try:
-      nodeIDFile = open(NODEID_FILE)
-      nodeNumber = int(nodeIDFile.read())
-   # ------ Fallback: try to extract node ID from hostname ------------------
-   except:
-      # Assuming hostname is "nne<NNN>" with N of 1 to 3 digits!
-      hostname = socket.gethostname()
-      match    = re.search('^(nne)(\d{1,3})$', hostname)
-      if match:
-         nodeNumber = int(match.group(2))
-      else:
-         sys.stderr.write('ERROR: Hostname is not "nne<NNN>"; try without network identifier!\n')
-         sys.exit(1)
-
-   sport = 10000 + (10 * nodeNumber) + options.network_id
-else:
-   sport = 0
 
 
 # ====== Make sure the output directories exist =============================
@@ -248,14 +231,14 @@ MBBM_LOGGING_CONF = {
          'level': 'DEBUG',
          'class': 'logging.handlers.TimedRotatingFileHandler',
          'formatter': 'standard',
-         'filename': (LOG_DIRECTORY + '/uping_%d.log') % (options.instance),
+         'filename': (LOG_DIRECTORY + '/uping_%d.log') % (options.identifier),
          'when': 'D'
       },
       'mbbm': {
          'level': 'DEBUG',
          'class': 'logging.handlers.TimedRotatingFileHandler',
          'formatter': 'mbbm',
-         'filename': (DATA_DIRECTORY + '/uping_%d.dat') % (options.instance),
+         'filename': (DATA_DIRECTORY + '/uping_%d.dat') % (options.identifier),
          'when': 'S',
          'interval': 15,
       }
@@ -321,10 +304,9 @@ while running == True:
       sourceIP  = netifaces.ifaddresses(options.iface)[family][0]['addr']
       udpSocket = socket.socket(family, socket.SOCK_DGRAM)
       try:
-         udpSocket.bind((sourceIP, sport))
+         udpSocket.bind((sourceIP, options.sport))
       except: # fallback to a random source port
-         if sport > 0:
-            udpSocket.bind((sourceIP, 0))
+         udpSocket.bind((sourceIP, 0))
       udpSocket.connect((str(options.daddr), options.dport))
 
       # ====== Create receiver thread =======================================
