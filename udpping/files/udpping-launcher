@@ -63,16 +63,10 @@ except:
    sys.exit(1)
 
 try:
-   myNodeID     = int(configuration['node_id'])
    syncServer   = configuration['sync_server']
    syncIdentity = configuration['sync_identity']
 except:
    sys.stderr.write('Invalid or incomplete configuration in ' + CONFIG_FILE + '!\n')
-   sys.exit(1)
-
-if myNodeID != nodeID:
-   sys.stderr.write('Configuration seems to be for different node: ' + \
-                    str(nodeID) + ' != ' + str(myNodeID) + '!\n')
    sys.exit(1)
 
 
