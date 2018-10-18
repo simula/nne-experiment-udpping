@@ -31,37 +31,35 @@
 #
 # Contact: dreibh@simula.no
 
-
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-CONTAINER=${DIR##*/}
-CONTAINERTAG=dreibh/udpping
+CONTAINER="dreibh/udpping"
 TESTNAME="test0"
+WORKDIR="/run/shm/${TESTNAME}"
 
-echo "Building:"
-./build
 
-echo "Tagging:"
-# Create tag (no push needed):
-docker tag ${CONTAINER} ${CONTAINERTAG}
-#./push
+echo "Prepare:"
+rm -rf $WORKDIR
+mkdir -p $WORKDIR
+echo '{ "sync_server": "pioneer.nntb.no", "sync_identity": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC3c5slgEdWW7XzmuNJkDswrd4FhSMGTVSMO7dujSrhP8pqMUDeXuAYsD0Tn6gwitScm30V/T4gxbDxnHokWuuqg6m3aotxvqnxOHdbtlQW9Ho5tqU469JDq7QZYnJmLjSgJ5cQYodEzfLJxQzgpHDzNMa/P224c18+SdhRL7LtYLBMtJLW1cG/aJ6Wlg7H3qzxjKG36YDZ3TRz0sEH+xuHK2VTZENQJ66IC+WUHwSiMpArb6t07r8cNZNv6VLbtIVj3xYO9olu08L0atPeKJjXvPz/6E2qeiFcFzjRlk/LRee1a73VoAPu+RzjFqVt88f5KtQRWdytV1zRSLTpWYsTeY7t8I5/cYzBCviZXygV3IpcoSgppnyKKF2ZSICXsT3QTsdIFVnB95my9bIZmgOk7B0gvF0eOG+UB1wI7jk4Iq7HsAqf9MYojwINiydGHfzsRYEdAuK4eipbKjD7NErqBur6XuxjrAxulVmjFBJLaJz+S2NFkdB6iRCcwHSBNNnYypdyUB5Z/JGx60H38h31oSoaotV4v14Dy4y7jxKAV9c4m9rfOexpRrPZ61yuM2CE9Jv6wn6aJVxkLCvJoOi0s6iOgOTyCLAL+hoLPq+U9zTUUuGPKxhsrmihOqqSCLux73VTspO9Y8P8ZjsRvOm8ym3ZpDHhnh5vKnPfLJCbWw== invalid@example.org" }' >$WORKDIR/config
+echo '999' >$WORKDIR/nodeid
+mkdir -p $WORKDIR/results
 
-echo "Stopping previous run:"
+
+echo "Update:"
 docker kill ${TESTNAME} || true
 docker container rm ${TESTNAME} || true
 
-echo "Starting:"
-rm -rf /run/shm/monroe-results
-mkdir -p /run/shm/monroe-results
-echo '{ "node_id": "999", "sync_server": "pioneer.nntb.no", "sync_identity": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC3c5slgEdWW7XzmuNJkDswrd4FhSMGTVSMO7dujSrhP8pqMUDeXuAYsD0Tn6gwitScm30V/T4gxbDxnHokWuuqg6m3aotxvqnxOHdbtlQW9Ho5tqU469JDq7QZYnJmLjSgJ5cQYodEzfLJxQzgpHDzNMa/P224c18+SdhRL7LtYLBMtJLW1cG/aJ6Wlg7H3qzxjKG36YDZ3TRz0sEH+xuHK2VTZENQJ66IC+WUHwSiMpArb6t07r8cNZNv6VLbtIVj3xYO9olu08L0atPeKJjXvPz/6E2qeiFcFzjRlk/LRee1a73VoAPu+RzjFqVt88f5KtQRWdytV1zRSLTpWYsTeY7t8I5/cYzBCviZXygV3IpcoSgppnyKKF2ZSICXsT3QTsdIFVnB95my9bIZmgOk7B0gvF0eOG+UB1wI7jk4Iq7HsAqf9MYojwINiydGHfzsRYEdAuK4eipbKjD7NErqBur6XuxjrAxulVmjFBJLaJz+S2NFkdB6iRCcwHSBNNnYypdyUB5Z/JGx60H38h31oSoaotV4v14Dy4y7jxKAV9c4m9rfOexpRrPZ61yuM2CE9Jv6wn6aJVxkLCvJoOi0s6iOgOTyCLAL+hoLPq+U9zTUUuGPKxhsrmihOqqSCLux73VTspO9Y8P8ZjsRvOm8ym3ZpDHhnh5vKnPfLJCbWw== invalid@example.org", "instances": [ { "measurement_id": "99997", "iccid": "12345", "network_id": "97" } ] }
-' >config
-echo '999' >nodeid
+./build
+docker tag ${CONTAINER} ${CONTAINERTAG}
+#./push
+
+
+echo "Run"
 docker run \
    --name ${TESTNAME} \
    --cap-add NET_ADMIN \
    --cap-add NET_RAW \
    --shm-size=1G \
-   -v /run/shm/monroe-results:/monroe/results \
+   -v $WORKDIR:/monroe/results \
    -v `pwd`/config:/monroe/config:ro \
    -v `pwd`/nodeid:/nodeid:ro \
    ${CONTAINERTAG} &
