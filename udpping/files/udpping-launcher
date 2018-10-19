@@ -76,8 +76,9 @@ while True:
       try:
          iccid = metadata['ICCID']
          intIF = metadata['InternalInterface']
-         mcc   = 505   # FIXME!
-         mnc   = 90    # FIXME!
+         mccmnc = str(metadata['IMSIMCCMNC'])
+         mcc    = int(mccmnc[0:3])
+         mnc    = int(mccmnc[3:])
       except Exception as e:
          sys.stderr.write('WARNING: Cannot read MONROE.META.DEVICE.MODEM: ' + str(e) + '\n')
          iccid = None
