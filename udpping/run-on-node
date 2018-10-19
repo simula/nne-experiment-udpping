@@ -48,7 +48,7 @@ mkdir -p $WORKDIR/results
 
 echo "Update:"
 docker rm -f ${TESTNAME} >/dev/null 2>&1 || true
-sudo docker pull $CONTAINER
+sudo docker pull ${CONTAINERTAG}
 
 
 echo "Run:"
@@ -62,7 +62,7 @@ docker run -d \
    -v $WORKDIR/results:/monroe/results \
    -v $WORKDIR/config:/monroe/config:ro \
    -v /etc/nodeid:/nodeid:ro \
-   $CONTAINER
+   ${CONTAINERTAG}
 
 sleep 1
 
