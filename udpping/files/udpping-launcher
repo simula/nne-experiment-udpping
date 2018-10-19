@@ -81,24 +81,23 @@ while True:
          mnc    = int(mccmnc[3:])
       except Exception as e:
          sys.stderr.write('WARNING: Cannot read MONROE.META.DEVICE.MODEM: ' + str(e) + '\n')
-         iccid = None
-         intIF = None
-         mcc   = None
-         mnc   = None
+         iccid  = None
+         intIF  = None
+         mccmnc = None
+         mcc    = None
+         mnc    = None
 
    # ------ Try to start instance, if not yet started -----------------------
    if iccid != None:
       if iccid in processes:
-         if processes[iccid].joinable():
-            processes[iccid].join()
-            processes[iccid].remove(iccid)
+         if processes[iccid].poll() != None:
+            processes.remove(iccid)
             sys.stderr.write('WARNING: Instance for ICCID ' + iccid + ' has stopped!\n')
 
       if not iccid in processes:
-         iccid      = instance['iccid']
-         identifier = '%03d:%02d'.format(mcc, mnc)
+         identifier = '{:03d}:{:02d}'.format(mcc, mnc)
 
-         print('Starting instance ' + str(measurementID) + ' on ' + intIF + ' ...')
-         processes[iccid] = subprocess.Popen([ '/opt/monroe/udpping', '-i', str(identifier),
+         print('Starting instance ' + identifier + ' on ' + intIF + ' for ICCID ' + iccid + ' ...')
+         processes[iccid] = subprocess.Popen([ '/opt/monroe/udpping', '-i', identifier,
                                                                       '-I', intIF ])
-         sys.stderr.write('Started instance for ICCID ' + iccid + '\n')
+         sys.stderr.write('Started instance ' + identifier + ' on ' + intIF + ' for ICCID ' + iccid + '\n')

@@ -128,7 +128,7 @@ class Receiver(threading.Thread):
 
             # ====== Log result =============================================
             mlogger.info(
-               '%s\t%d\t%d\t<d e="%d"><rtt>%.6f</rtt></d>',
+               '%s\t%s\t%d\t<d e="%d"><rtt>%.6f</rtt></d>',
                sendTimeStampString, options.identifier, int(seqNumber), e, rtt
             )
 
@@ -231,14 +231,14 @@ MBBM_LOGGING_CONF = {
          'level': 'DEBUG',
          'class': 'logging.handlers.TimedRotatingFileHandler',
          'formatter': 'standard',
-         'filename': (LOG_DIRECTORY + '/uping_%d.log') % (options.identifier),
+         'filename': (LOG_DIRECTORY + '/uping_%s.log') % (options.identifier),
          'when': 'D'
       },
       'mbbm': {
          'level': 'DEBUG',
          'class': 'logging.handlers.TimedRotatingFileHandler',
          'formatter': 'mbbm',
-         'filename': (DATA_DIRECTORY + '/uping_%d.dat') % (options.identifier),
+         'filename': (DATA_DIRECTORY + '/uping_%s.dat') % (options.identifier),
          'when': 'S',
          'interval': 15,
       }
