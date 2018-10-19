@@ -31,7 +31,10 @@
 #
 # Contact: dreibh@simula.no
 
-CONTAINER="dreibh/udpping"
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+CONTAINER=${DIR##*/}
+CONTAINERTAG=dreibh/udpping
+
 TESTNAME="test0"
 WORKDIR="/run/shm/${TESTNAME}"
 
@@ -39,7 +42,7 @@ WORKDIR="/run/shm/${TESTNAME}"
 echo "Prepare:"
 rm -rf $WORKDIR
 mkdir -p $WORKDIR
-echo '{ "sync_server": "pioneer.nntb.no", "sync_identity": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC3c5slgEdWW7XzmuNJkDswrd4FhSMGTVSMO7dujSrhP8pqMUDeXuAYsD0Tn6gwitScm30V/T4gxbDxnHokWuuqg6m3aotxvqnxOHdbtlQW9Ho5tqU469JDq7QZYnJmLjSgJ5cQYodEzfLJxQzgpHDzNMa/P224c18+SdhRL7LtYLBMtJLW1cG/aJ6Wlg7H3qzxjKG36YDZ3TRz0sEH+xuHK2VTZENQJ66IC+WUHwSiMpArb6t07r8cNZNv6VLbtIVj3xYO9olu08L0atPeKJjXvPz/6E2qeiFcFzjRlk/LRee1a73VoAPu+RzjFqVt88f5KtQRWdytV1zRSLTpWYsTeY7t8I5/cYzBCviZXygV3IpcoSgppnyKKF2ZSICXsT3QTsdIFVnB95my9bIZmgOk7B0gvF0eOG+UB1wI7jk4Iq7HsAqf9MYojwINiydGHfzsRYEdAuK4eipbKjD7NErqBur6XuxjrAxulVmjFBJLaJz+S2NFkdB6iRCcwHSBNNnYypdyUB5Z/JGx60H38h31oSoaotV4v14Dy4y7jxKAV9c4m9rfOexpRrPZ61yuM2CE9Jv6wn6aJVxkLCvJoOi0s6iOgOTyCLAL+hoLPq+U9zTUUuGPKxhsrmihOqqSCLux73VTspO9Y8P8ZjsRvOm8ym3ZpDHhnh5vKnPfLJCbWw== invalid@example.org" }' >$WORKDIR/config
+echo '{  }' >$WORKDIR/config
 mkdir -p $WORKDIR/results
 
 

@@ -39,10 +39,7 @@ import subprocess
 import zmq
 
 
-NODEID_FILE          = '/nodeid'
-CONFIG_FILE          = '/monroe/config'
-LSYNCD_CONFIG_FILE   = '/etc/lsyncd/lsyncd.conf.lua'
-LSYNCD_IDENTITY_FILE = '/etc/lsyncd/id_lsyncd.pub'
+NODEID_FILE = '/nodeid'
 
 
 # ====== Check node ID ======================================================
@@ -52,60 +49,6 @@ try:
 except:
    sys.stderr.write('Unable to read node ID from ' + NODEID_FILE + '!\n')
    sys.exit(1)
-
-
-# ====== Read configuration file ============================================
-try:
-   configurationFile = open(CONFIG_FILE)
-   configuration = json.load(configurationFile)
-except:
-   sys.stderr.write('Unable to read configuration from ' + CONFIG_FILE + '!\n')
-   sys.exit(1)
-
-try:
-   syncServer   = configuration['sync_server']
-   syncIdentity = configuration['sync_identity']
-except:
-   sys.stderr.write('Invalid or incomplete configuration in ' + CONFIG_FILE + '!\n')
-   sys.exit(1)
-
-
-# ====== Configure lsyncd ===================================================
-lsyncdidentity = open(LSYNCD_IDENTITY_FILE, 'w')
-lsyncdidentity.write(syncIdentity + '\n')
-lsyncdidentity.close()
-
-lsyncdconf = open(LSYNCD_CONFIG_FILE, 'w')
-lsyncdconf.write(
-"""
-settings {
-   logfile        = "/var/log/lsyncd.log",
-   statusFile     = "/var/log/lsyncd.status",
-   insist         = true,
-   log            = "scarce",
-   statusInterval = 60
-}
-
-sync {
-   default.rsync,
-   source    = "/monroe/results/data/",
-   target    = """ + '"nne@' + syncServer + ':/nne/data/' + str(nodeID) + '"' + """,
-   delete    = false,
-   exclude   = { "/*.dat", "/*.sdat", "/.*" },
-   maxDelays = 15,
-   rsync = {
-      archive  = true,
-      compress = true,
-      rsh      = "/usr/bin/ssh -p22 -i""" + LSYNCD_IDENTITY_FILE + """ -oVerifyHostKeyDNS=yes -oStrictHostKeyChecking=no -oPasswordAuthentication=no",
-      _extra   = { "--remove-source-files" }
-   }
-}
-""")
-lsyncdconf.close()
-
-subprocess.call(['service', 'lsyncd', 'stop'])
-subprocess.call(['mkdir', '-p', '/monroe/results/data/'])
-subprocess.call(['service', 'lsyncd', 'start'])
 
 
 # ====== Initialise ZeroMQ metadata stream ==================================

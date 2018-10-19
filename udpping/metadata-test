@@ -66,17 +66,6 @@ def signalHandler(signum, frame):
    running = False
 
 
-# ###### Compressing log rotator ############################################
-def CompressingRotator(source, dest):
-   os.rename(source, dest)
-   f_in = open(dest, 'rb')
-   f_out = bz2.BZ2File("%s.bz2" % dest, 'wb')
-   f_out.writelines(f_in)
-   f_out.close()
-   f_in.close()
-   os.remove(dest)
-
-
 
 # ###### Main program #######################################################
 
@@ -123,29 +112,11 @@ MBBM_LOGGING_CONF = {
          'formatter': 'standard',
          'filename': LOG_DIRECTORY + '/metadatacollector.log',
          'when': 'D'
-      },
-      'mbbm': {
-         'level': 'DEBUG',
-         'class': 'logging.handlers.TimedRotatingFileHandler',
-         'formatter': 'mbbm',
-         'filename': DATA_DIRECTORY + '/metadatacollector.dat',
-         'when': 'S',
-         'interval': 15,
       }
    },
    'formatters': {
       'standard': {
          'format': '%(asctime)s %(levelname)s [PID=%(process)d] %(message)s'
-      },
-      'mbbm': {
-         'format': '%(message)s',
-      }
-   },
-   'loggers': {
-      'mbbm': {
-         'handlers': ['mbbm'],
-         'level': 'DEBUG',
-         'propagate': False,
       }
    },
    'root': {
@@ -155,10 +126,6 @@ MBBM_LOGGING_CONF = {
 }
 
 logging.config.dictConfig(MBBM_LOGGING_CONF)
-mlogger = logging.getLogger('mbbm')
-if compress == True:
-   for loghandler in mlogger.handlers[:]:
-      loghandler.rotator = CompressingRotator
 
 
 # ====== Initialise ZeroMQ metadata stream ==================================
