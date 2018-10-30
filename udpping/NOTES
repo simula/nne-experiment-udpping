@@ -1,6 +1,16 @@
 Measurement ID Query:
 
-select * from measurement_instance
+select
+   i.node_id,
+   i.id as measurement_id,
+   d.name as measurement_name,
+   n.mcc, n.mnc,
+   i.start_time, i.stop_time
+from
+   measurement_instance i, measurement_descriptor d, network n
 where
-   node_id = 864 and
-   measurement_desc_id in (select id from measurement_descriptor where name = 'RTT measurement')
+   i.node_id=864 and
+   i.measurement_desc_id = d.id and
+   i.network_id = n.id
+order by
+   node_id, measurement_id
