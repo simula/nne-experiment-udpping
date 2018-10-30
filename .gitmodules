@@ -1,0 +1,3 @@
+[submodule "scheduler-configurator/nne-node-experiments"]
+	path = scheduler-configurator/nne-node-experiments
+	url = git@github.com:simula/nne-node-experiments.git
