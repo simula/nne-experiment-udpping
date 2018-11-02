@@ -40,6 +40,8 @@ import zmq
 
 
 NODEID_FILE = '/nodeid'
+CONFIG_FILE  = '/monroe/config'
+LOG_DIRECTORY  = '.'
 
 
 # ====== Check node ID ======================================================
@@ -49,6 +51,56 @@ try:
 except:
    sys.stderr.write('Unable to read node ID from ' + NODEID_FILE + '!\n')
    sys.exit(1)
+
+
+# ====== Read configuration file ============================================
+try:
+   configurationFile = open(CONFIG_FILE)
+   configuration = json.load(configurationFile)
+except:
+   sys.stderr.write('Unable to read configuration from ' + CONFIG_FILE + '!\n')
+   sys.exit(1)
+
+try:
+   myNodeID      = configuration['node_id']
+   mcc           = configuration['mcc']
+   mnc           = configuration['mnc']
+   measurementID = configuration['measurement_id']
+   networkID     = configuration['network_id']
+except:
+   sys.stderr.write('Invalid or incomplete configuration in ' + CONFIG_FILE + '!\n')
+   sys.exit(1)
+
+if myNodeID != nodeID:
+   sys.stderr.write('Configuration seems to be for different node: ' + \
+                    str(nodeID) + ' != ' + str(myNodeID) + '!\n')
+   sys.exit(1)
+
+
+# ====== Initialise logger ==================================================
+LOGGING_CONF = {
+   'version': 1,
+   'handlers': {
+      'default': {
+         'level': 'DEBUG',
+         'class': 'logging.handlers.TimedRotatingFileHandler',
+         'formatter': 'standard',
+         'filename': LOG_DIRECTORY + '/udpping-launcher.log',
+         'when': 'D'
+      },
+   },
+   'formatters': {
+      'standard': {
+         'format': '%(asctime)s %(levelname)s [PID=%(process)d] %(message)s'
+      },
+   },
+   'root': {
+      'level': 'DEBUG',
+      'handlers': ['default'],
+   }
+}
+logging.config.dictConfig(LOGGING_CONF)
+logging.debug('Starting')
 
 
 # ====== Initialise ZeroMQ metadata stream ==================================
@@ -74,30 +126,34 @@ while True:
    # ------ Extract ICCID and InternalInterface -----------------------------
    if topic.startswith('MONROE.META.DEVICE.MODEM'):
       try:
-         iccid = metadata['ICCID']
-         intIF = metadata['InternalInterface']
-         mccmnc = str(metadata['IMSIMCCMNC'])
-         mcc    = int(mccmnc[0:3])
-         mnc    = int(mccmnc[3:])
+         metadataIF     = metadata['InternalInterface']
+         metadataMCCMNC = str(metadata['IMSIMCCMNC'])
+         metadataMCC    = mccmnc[0:3]
+         metadataMNC    = mccmnc[3:]
       except Exception as e:
-         sys.stderr.write('WARNING: Cannot read MONROE.META.DEVICE.MODEM: ' + str(e) + '\n')
-         iccid  = None
-         intIF  = None
-         mccmnc = None
-         mcc    = None
-         mnc    = None
+         logging.warning('WARNING: Cannot read MONROE.META.DEVICE.MODEM: ' + str(e) + '\n')
+         metadataIF     = None
+         metadataMCCMNC = None
+         metadataMCC    = None
+         metadataMNC    = None
 
    # ------ Try to start instance, if not yet started -----------------------
-   if iccid != None:
-      if iccid in processes:
-         if processes[iccid].poll() != None:
-            processes.remove(iccid)
-            sys.stderr.write('WARNING: Instance for ICCID ' + iccid + ' has stopped!\n')
+   if ((metadataMCC == mcc) and (metadataMNC == mnc) and (metadataIF != None)):
+      if measurementID in processes:
+         if processes[measurementID].poll() != None:
+            processes.remove(measurementID)
+            sys.stderr.write('WARNING: Instance for measurement ID ' + measurementID + ' has stopped!\n')
 
-      if not iccid in processes:
-         identifier = '{:03d}:{:02d}'.format(mcc, mnc)
+      if not measurementID in processes:
+         logging.debug('Starting instance ' + str(measurementID) + ' on ' + intIF + ' ...')
+         processes[measurementID] = subprocess.Popen([ '/opt/monroe/udpping',
+                                                       '-i', str(measurementID),
+                                                       '-N', str(networkID),
+                                                       '-I', intIF ])
+         logging.debug('Started instance ' + str(measurementID) + ' on ' + intIF)
 
-         print('Starting instance ' + identifier + ' on ' + intIF + ' for ICCID ' + iccid + ' ...')
-         processes[iccid] = subprocess.Popen([ '/opt/monroe/udpping', '-i', identifier,
-                                                                      '-I', intIF ])
-         sys.stderr.write('Started instance ' + identifier + ' on ' + intIF + ' for ICCID ' + iccid + '\n')
+
+logging.debug('Waiting for processes to finish ...')
+for process in processes:
+   process.wait()
+logging.debug('Finished!')
