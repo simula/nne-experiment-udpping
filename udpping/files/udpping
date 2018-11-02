@@ -98,7 +98,7 @@ class Receiver(threading.Thread):
    # ###### Main loop #######################################################
    def run(self):
       global running, restart
-      logging.info("Starting receiver thread")
+      logging.info('Starting receiver thread')
 
       # ====== Reception loop ===============================================
       while running and not self.terminate.is_set():
@@ -113,7 +113,7 @@ class Receiver(threading.Thread):
             sendTimeStamp = int(sendTimeStamp) / 1000000.0   # time stamp in s
             rtt = receiveTimeStamp - sendTimeStamp
             if not ((rtt >= RTT_VALID_MIN) and (rtt <= RTT_VALID_MAX)):
-               logging.warn("Invalid RTT: %s", payload)
+               logging.warn('Invalid RTT: %s', payload)
                continue
             sendTimeStampString = \
                datetime.datetime.utcfromtimestamp(sendTimeStamp).strftime('%Y-%m-%d %H:%M:%S.%f')
@@ -123,7 +123,7 @@ class Receiver(threading.Thread):
                e = 0
             else:
                e = 1
-               logging.warn("Duplicate or expired, seqNumber=%d sendTimeStampString=%s",
+               logging.warn('Duplicate or expired, seqNumber=%d sendTimeStampString=%s',
                             int(seqNumber), sendTimeStampString)
 
             # ====== Log result =============================================
@@ -136,11 +136,11 @@ class Receiver(threading.Thread):
          except socket.timeout:
             pass
          except IOError:
-            logging.exception("IOError while handling a reply, restarting")
+            logging.exception('IOError while handling a reply, restarting')
             restart = True
             break
          except:
-            logging.exception("Exception while handling a reply")
+            logging.exception('Exception while handling a reply')
 
          # ====== Clean-up ==================================================
          finally:
@@ -163,17 +163,17 @@ class Receiver(threading.Thread):
                   with self.lock:
                      del self.requests[payload]
             except:
-               logging.exception("Exception while writing expired packets")
+               logging.exception('Exception while writing expired packets')
 
       # ====== Shut down ====================================================
-      logging.debug("Stopping receiver thread")
+      logging.debug('Stopping receiver thread')
 
 
 # ###### Compressing log rotator ############################################
 def CompressingRotator(source, dest):
    os.rename(source, dest)
    f_in = open(dest, 'rb')
-   f_out = bz2.BZ2File("%s.bz2" % dest, 'wb')
+   f_out = bz2.BZ2File('%s.bz2' % dest, 'wb')
    f_out.writelines(f_in)
    f_out.close()
    f_in.close()
@@ -185,14 +185,14 @@ def CompressingRotator(source, dest):
 
 # ====== Handle arguments ===================================================
 ap = argparse.ArgumentParser(description='UDP Ping for NorNet Edge')
-ap.add_argument('-i', '--instance',     help="Measurement instance ID",      type=int, required=True)
+ap.add_argument('-i', '--instance',     help='Measurement instance ID',      type=int, required=True)
 ap.add_argument('-d', '--dport',        help='Destination port',             type=int, default=DEFAULT_DPORT)
 ap.add_argument('-D', '--daddr',        help='Destination IP',               type=ip_address, default=DEFAULT_DADDR)
 ap.add_argument('-I', '--iface',        help='Interface name',               required=True)
 ap.add_argument('-S', '--psize',        help='Payload size',                 type=int, default=DEFAULT_PSIZE)
 ap.add_argument('-t', '--timeout',      help='Reply timeout',                type=int, default=DEFAULT_TIMEOUT)
 ap.add_argument('-N', '--network_id',   help='Network identifier',           type=int, default=None)
-ap.add_argument('-u', '--uncompressed', help='Turn off results compression', action="store_true", default = False)
+ap.add_argument('-u', '--uncompressed', help='Turn off results compression', action='store_true', default = False)
 options = ap.parse_args()
 
 if ((options.dport < 1) or (options.dport > 65535)):
@@ -318,6 +318,10 @@ while running == True:
          family = socket.AF_INET
       else:
          family = socket.AF_INET6
+
+      if not options.iface in netifaces.interfaces():
+         raise Exception('Interface ' + options.iface + ' is (currently) not available.')
+
       sourceIP  = netifaces.ifaddresses(options.iface)[family][0]['addr']
       udpSocket = socket.socket(family, socket.SOCK_DGRAM)
       try:
@@ -332,7 +336,7 @@ while running == True:
       receiver.start()
 
       # ====== Send loop ====================================================
-      logging.debug("Starting")
+      logging.debug('Starting')
       while running and not restart:
          # ====== Send UDP Ping =============================================
          sendTimeStamp = time.time()
@@ -356,8 +360,8 @@ while running == True:
          time.sleep(1 - (time.time() - sendTimeStamp))
 
    # ====== Handle error ====================================================
-   except:
-      logging.exception("Error")
+   except Exception as e:
+      logging.warning('Sleeping: ' + str(e))
       time.sleep(SLEEP_ON_ERROR)
 
 
@@ -368,4 +372,4 @@ if receiver:
    except:
       pass
 
-logging.debug("Exiting")
+logging.debug('Exiting')

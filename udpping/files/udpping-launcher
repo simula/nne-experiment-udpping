@@ -34,6 +34,8 @@
 
 
 import json
+import logging
+import logging.config
 import sys
 import subprocess
 import zmq
@@ -41,7 +43,7 @@ import zmq
 
 NODEID_FILE = '/nodeid'
 CONFIG_FILE  = '/monroe/config'
-LOG_DIRECTORY  = '.'
+LOG_DIRECTORY  = '/monroe/results/log'
 
 
 # ====== Check node ID ======================================================
@@ -62,18 +64,12 @@ except:
    sys.exit(1)
 
 try:
-   myNodeID      = configuration['node_id']
    mcc           = configuration['mcc']
    mnc           = configuration['mnc']
    measurementID = configuration['measurement_id']
    networkID     = configuration['network_id']
-except:
-   sys.stderr.write('Invalid or incomplete configuration in ' + CONFIG_FILE + '!\n')
-   sys.exit(1)
-
-if myNodeID != nodeID:
-   sys.stderr.write('Configuration seems to be for different node: ' + \
-                    str(nodeID) + ' != ' + str(myNodeID) + '!\n')
+except Exception as e:
+   sys.stderr.write('Invalid or incomplete configuration in ' + CONFIG_FILE + ':' + str(e) + '\n')
    sys.exit(1)
 
 
@@ -106,7 +102,7 @@ logging.debug('Starting')
 # ====== Initialise ZeroMQ metadata stream ==================================
 context = zmq.Context()
 socket = context.socket(zmq.SUB)
-socket.connect ("tcp://172.17.0.1:5556")
+socket.connect ('tcp://172.17.0.1:5556')
 socket.setsockopt_string(zmq.SUBSCRIBE, 'MONROE.META.DEVICE.MODEM')
 
 
@@ -128,8 +124,8 @@ while True:
       try:
          metadataIF     = metadata['InternalInterface']
          metadataMCCMNC = str(metadata['IMSIMCCMNC'])
-         metadataMCC    = mccmnc[0:3]
-         metadataMNC    = mccmnc[3:]
+         metadataMCC    = metadataMCCMNC[0:3]
+         metadataMNC    = metadataMCCMNC[3:]
       except Exception as e:
          logging.warning('WARNING: Cannot read MONROE.META.DEVICE.MODEM: ' + str(e) + '\n')
          metadataIF     = None
@@ -145,12 +141,12 @@ while True:
             sys.stderr.write('WARNING: Instance for measurement ID ' + measurementID + ' has stopped!\n')
 
       if not measurementID in processes:
-         logging.debug('Starting instance ' + str(measurementID) + ' on ' + intIF + ' ...')
+         logging.debug('Starting instance ' + str(measurementID) + ' on ' + metadataIF + ' ...')
          processes[measurementID] = subprocess.Popen([ '/opt/monroe/udpping',
                                                        '-i', str(measurementID),
                                                        '-N', str(networkID),
-                                                       '-I', intIF ])
-         logging.debug('Started instance ' + str(measurementID) + ' on ' + intIF)
+                                                       '-I', metadataIF ])
+         logging.debug('Started instance ' + str(measurementID) + ' on ' + metadataIF)
 
 
 logging.debug('Waiting for processes to finish ...')
