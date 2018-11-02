@@ -42,7 +42,7 @@ WORKDIR="/run/shm/${TESTNAME}"
 echo "Prepare:"
 rm -rf $WORKDIR
 mkdir -p $WORKDIR
-echo '{"measurement_id": 9617, "measurement_desc_id": 1, "measurement_desc": "RTT measurement", "network_id": 2, "mcc": "242", "mnc": "02", "container": "dreibh/udpping", "start_time": "2017-05-19 16:22:13", "stop_time": "None"}' >$WORKDIR/config
+echo '{"measurement_id": 9617, "measurement_desc_id": 1, "measurement_desc": "RTT measurement", "network_id": 1, "mcc": "242", "mnc": "01", "container": "dreibh/udpping", "start_time": "2017-05-19 16:22:13", "stop_time": "None"}' >$WORKDIR/config
 mkdir -p $WORKDIR/results
 
 

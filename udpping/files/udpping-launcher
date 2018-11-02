@@ -36,6 +36,7 @@
 import json
 import logging
 import logging.config
+import os
 import sys
 import subprocess
 import zmq
@@ -70,6 +71,14 @@ try:
    networkID     = configuration['network_id']
 except Exception as e:
    sys.stderr.write('Invalid or incomplete configuration in ' + CONFIG_FILE + ':' + str(e) + '\n')
+   sys.exit(1)
+
+
+# ====== Make sure the log directory exists =================================
+try:
+   os.makedirs(LOG_DIRECTORY, 0o755, True)
+except:
+   sys.stderr.write('ERROR: Unable to create directory ' + LOG_DIRECTORY + '!\n')
    sys.exit(1)
 
 
