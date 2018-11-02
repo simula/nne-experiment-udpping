@@ -33,15 +33,32 @@
 # Contact: dreibh@simula.no
 
 
-import zmq
+import json
 import sys
+import zmq
 
+
+# ====== Initialise ZeroMQ metadata stream ==================================
 context = zmq.Context()
 zmqSocket = context.socket(zmq.SUB)
 zmqSocket.connect ('tcp://172.17.0.1:5556')
 zmqSocket.setsockopt_string(zmq.SUBSCRIBE, '')
 
+poller = zmq.Poller()
+poller.register(zmqSocket, zmq.POLLIN)
+
+
+# ====== Main loop ==========================================================
 while True:
-   string = zmqSocket.recv().decode('utf-8')
-   sys.stdout.write(string + '\n')
-   sys.stdout.flush()
+   pollResult = poller.poll(1000)
+   if (zmqSocket, zmq.POLLIN) in pollResult:
+      try:
+         data = zmqSocket.recv().decode('utf-8').split(' ', 1)
+         topic    = data[0]
+         metadata = json.loads(data[1])
+
+         sys.stdout.write(topic + ': ')
+         sys.stdout.write(json.dumps(metadata, sort_keys=True, indent=3) + '\n')
+         sys.stdout.flush()
+      except Exception as e:
+         sys.stderr.write('ERROR: Cannot read metadata: ' + str(e) + '\n')
