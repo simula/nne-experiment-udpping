@@ -38,7 +38,7 @@
 # python3-netifaces python3-zmq
 
 import argparse
-import bz2
+import lzma
 import datetime
 import logging
 import logging.config
@@ -173,7 +173,7 @@ class Receiver(threading.Thread):
 def CompressingRotator(source, dest):
    os.rename(source, dest)
    f_in = open(dest, 'rb')
-   f_out = bz2.BZ2File('%s.bz2' % dest, 'wb')
+   f_out = lzma.LZMAFile('%s.xz' % dest, 'wb')
    f_out.writelines(f_in)
    f_out.close()
    f_in.close()
