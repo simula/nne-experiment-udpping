@@ -67,7 +67,7 @@ DEFAULT_PSIZE   = 20     # Default payload size
 DEFAULT_TIMEOUT = 60     # Default reply timeout (in s)
 
 LOG_DIRECTORY   = '/monroe/results/log'
-DATA_DIRECTORY  = '/monroe/results/data'
+DATA_DIRECTORY  = '/monroe/results'
 
 
 # ###### Global variables ###################################################
