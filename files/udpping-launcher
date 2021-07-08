@@ -69,10 +69,13 @@ try:
    mnc           = configuration['mnc']
    measurementID = configuration['measurement_id']
    networkID     = configuration['network_id']
+   try:
+      iccid = configuration['iccid']
+   except:
+      iccid = None
 except Exception as e:
    sys.stderr.write('Invalid or incomplete configuration in ' + CONFIG_FILE + ':' + str(e) + '\n')
    sys.exit(1)
-
 
 # ====== Make sure the log directory exists =================================
 try:
@@ -135,6 +138,7 @@ while True:
          metadataMCCMNC = str(metadata['IMSIMCCMNC'])
          metadataMCC    = metadataMCCMNC[0:3]
          metadataMNC    = metadataMCCMNC[3:]
+         metadataICCID  = str(metadata['ICCID'])
       except Exception as e:
          logging.warning('WARNING: Cannot read MONROE.META.DEVICE.MODEM: ' + str(e) + '\n')
          metadataIF     = None
@@ -149,6 +153,7 @@ while True:
 
    if ( ( ((mcc == None) and (mnc == None)) or
           ((metadataMCC == mcc) and (metadataMNC == mnc)) ) and
+        ( (iccid == None) or (metadataICCID == iccid)) and
         (metadataIF != None) ):
       if measurementID in processes:
          if processes[measurementID].poll() != None:

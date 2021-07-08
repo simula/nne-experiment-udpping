@@ -14,7 +14,7 @@
 #
 # Container-based UDPPing for NorNet Edge
 #
-# Copyright (C) 2018 by Thomas Dreibholz
+# Copyright (C) 2018-2021 by Thomas Dreibholz
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,7 +42,7 @@ WORKDIR="/run/shm/${TESTNAME}"
 echo "Prepare:"
 rm -rf $WORKDIR
 mkdir -p $WORKDIR
-echo '{ "mcc": 123, "mnc": 987, "measurement_id": 99999, "network_id": 999 }' >$WORKDIR/config
+echo '{ "mcc": 123, "mnc": 987, "iccid": "1234567890", "measurement_id": 99999, "network_id": 999 }' >$WORKDIR/config
 echo '999' >$WORKDIR/nodeid
 mkdir -p $WORKDIR/results
 
