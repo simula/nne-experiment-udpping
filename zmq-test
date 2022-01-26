@@ -41,17 +41,8 @@ socket = context.socket(zmq.PUB)
 socket.bind("tcp://*:5556")
 
 while True:
-   ##  Wait for next request from client
-   #message = socket.recv()
-   #print("Received request: %s" % message)
+   socket.send('MONROE.META.DEVICE.MODEM.89470000210701063871.SIGNAL {"SequenceNumber":38540,"Timestamp":1642773783.010252,"DataVersion":3,"DataId":"MONROE.META.DEVICE.MODEM","InternalInterface":"op2","ICCID":"89470000210701063871","IMSI":"242013085646705","IMEI":"863305040230095","InterfaceName":"nlw_1","RSRP":-95,"RSSI":-71,"RSRQ":-7,"DeviceMode":255,"DeviceSubmode":255,"DeviceState":0,"PCI":65535,"CELevel":65535}'.encode('utf-8'))
 
-   print('Send ...')
-   try:
-      socket.send('MONROE.META.DEVICE.MODEM.89470000210701063871.SIGNAL {"SequenceNumber":38540,"Timestamp":1642773783.010252,"DataVersion":3,"DataId":"MONROE.META.DEVICE.MODEM","InternalInterface":"op2","ICCID":"89470000210701063871","IMSI":"242013085646705","IMEI":"863305040230095","InterfaceName":"nlw_1","RSRP":-95,"RSSI":-71,"RSRQ":-7,"DeviceMode":255,"DeviceSubmode":255,"DeviceState":0,"PCI":65535,"CELevel":65535}'.encode('utf-8'))
-
-      socket.send('MONROE.META.DEVICE.MODEM.8947080037110727061.UPDATE {"SequenceNumber":38580,"Timestamp":1642773810.942277,"DataVersion":3,"DataId":"MONROE.META.DEVICE.MODEM","InternalInterface":"op1","ICCID":"8947080037110727061","IMSI":"242029012154919","IMEI":"863305040237108","Operator":"NetCom","IPAddress":"100.81.179.47","InterfaceName":"nlw_2","IMSIMCCMNC":24202,"NWMCCMNC":24202,"LAC":65535,"CID":31346447,"RSRP":-102,"RSSI":-76,"RSRQ":-11,"DeviceMode":5,"DeviceSubmode":0,"DeviceState":3,"PCI":65535,"TxPower":210,"CELevel":65535}'.encode('utf-8'))
-   except:
-      print('e')
-      pass
+   socket.send('MONROE.META.DEVICE.MODEM.8947080037110727061.UPDATE {"SequenceNumber":38580,"Timestamp":1642773810.942277,"DataVersion":3,"DataId":"MONROE.META.DEVICE.MODEM","InternalInterface":"op1","ICCID":"8947080037110727061","IMSI":"242029012154919","IMEI":"863305040237108","Operator":"NetCom","IPAddress":"100.81.179.47","InterfaceName":"nlw_2","IMSIMCCMNC":24202,"NWMCCMNC":24202,"LAC":65535,"CID":31346447,"RSRP":-102,"RSSI":-76,"RSRQ":-11,"DeviceMode":5,"DeviceSubmode":0,"DeviceState":3,"PCI":65535,"TxPower":210,"CELevel":65535}'.encode('utf-8'))
 
    time.sleep(1)
