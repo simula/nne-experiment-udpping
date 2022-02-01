@@ -59,7 +59,7 @@ NODEID_FILE     = '/nodeid'
 RTT_VALID_MIN   = 0      # Minimum valid RTT (in s)
 RTT_VALID_MAX   = 300    # Maximum valid RTT (in s)
 PAYLOAD_MAX     = 2048   # Maximum payload size (in B)
-SLEEP_ON_ERROR  = 15     # Waiting time before restarting on error (in s)
+SLEEP_ON_ERROR  = 300    # Waiting time before restarting on error (in s)
 
 DEFAULT_DADDR   = ip_address('128.39.37.70')   # Default Ping destination with UDP Echo (voyager.nntb.no)
 DEFAULT_DPORT   = 7      # Default destination port
