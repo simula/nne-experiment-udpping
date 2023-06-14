@@ -30,7 +30,7 @@
 #
 # Contact: dreibh@simula.no
 
-FROM monroe/base
+FROM crnaeng/base
 
 MAINTAINER dreibh@simula.no
 

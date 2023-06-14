@@ -33,10 +33,10 @@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 CONTAINER="udpping"
-CONTAINERTAG="dreibh/udpping"
+CONTAINERTAG="crnaeng/udpping"
 
 TESTNAME="test0"
-WORKDIR="/run/shm/${TESTNAME}"
+WORKDIR="`pwd`/run/shm/${TESTNAME}"
 
 
 echo "Prepare:"
