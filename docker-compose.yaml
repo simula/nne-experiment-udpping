@@ -1,0 +1,13 @@
+version: "2.13"
+services:
+  udpping:
+    build: .
+    image: crnaeng/udpping:latest
+    volumes:
+      - ./nne/results:/nne/results
+    networks:
+      - br-lan
+networks:
+  br-lan:
+    name: br-lan
+    external: true

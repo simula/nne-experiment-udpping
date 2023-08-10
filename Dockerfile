@@ -32,11 +32,8 @@
 
 FROM --platform=linux/amd64 alpine
 
-
-
 COPY files/* /opt/nne/
 
-#RUN apt-get update
 RUN apk add python3 curl jq
 
 RUN apk add joe less psmisc mlocate bash-completion && updatedb

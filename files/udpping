@@ -42,7 +42,7 @@ import lzma
 import datetime
 import logging
 import logging.config
-import netifaces
+#import netifaces
 import os
 import re
 import signal
@@ -66,8 +66,8 @@ DEFAULT_DPORT   = 7      # Default destination port
 DEFAULT_PSIZE   = 20     # Default payload size
 DEFAULT_TIMEOUT = 60     # Default reply timeout (in s)
 
-LOG_DIRECTORY   = '/monroe/results/log'
-DATA_DIRECTORY  = '/monroe/results'
+LOG_DIRECTORY   = './nne/results/log'
+DATA_DIRECTORY  = './nne/results'
 
 
 # ###### Global variables ###################################################
@@ -188,7 +188,8 @@ ap = argparse.ArgumentParser(description='UDP Ping for NorNet Edge')
 ap.add_argument('-i', '--instance',     help='Measurement instance ID',      type=int, required=True)
 ap.add_argument('-d', '--dport',        help='Destination port',             type=int, default=DEFAULT_DPORT)
 ap.add_argument('-D', '--daddr',        help='Destination IP',               type=ip_address, default=DEFAULT_DADDR)
-ap.add_argument('-I', '--iface',        help='Interface name',               required=True)
+ap.add_argument('-s', '--saddr',        help='Source interface IP',          required=True)
+#ap.add_argument('-I', '--iface',        help='Interface name',               required=True)
 ap.add_argument('-S', '--psize',        help='Payload size',                 type=int, default=DEFAULT_PSIZE)
 ap.add_argument('-t', '--timeout',      help='Reply timeout',                type=int, default=DEFAULT_TIMEOUT)
 ap.add_argument('-N', '--network_id',   help='Network identifier',           type=int, default=None)
@@ -319,10 +320,12 @@ while running == True:
       else:
          family = socket.AF_INET6
 
-      if not options.iface in netifaces.interfaces():
-         raise Exception('Interface ' + options.iface + ' is (currently) not available.')
+      # if not options.iface in netifaces.interfaces():
+      #    raise Exception('Interface ' + options.iface + ' is (currently) not available.')
 
-      sourceIP  = netifaces.ifaddresses(options.iface)[family][0]['addr']
+      #sourceIP  = netifaces.ifaddresses(options.iface)[family][0]['addr']
+      sourceIP = options.saddr
+      logging.debug('Source IP ' + sourceIP)
       udpSocket = socket.socket(family, socket.SOCK_DGRAM)
       try:
          udpSocket.bind((sourceIP, sport))

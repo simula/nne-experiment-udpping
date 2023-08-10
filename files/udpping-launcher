@@ -39,12 +39,38 @@ import logging.config
 import os
 import sys
 import subprocess
-import zmq
+#import zmq
+
+
+import urllib
+from urllib.request import urlopen
+import base64
+
+
+url = "http://192.168.5.1/dlb"
+req = urllib.request.Request(url)
+
+credentials = ('%s:%s' % ('admin', 'celerway'))
+encoded_credentials = base64.b64encode(credentials.encode('ascii'))
+req.add_header('Authorization', 'Basic %s' % encoded_credentials.decode("ascii"))
+
+response = urlopen(req)
+data = response.read()
+values = json.loads(data)
+
+interface_saddrs = []
+for interface in values['interfaces']:
+   interface_saddrs.append(interface['address'])
+logging.debug('Found interface source addresses: ' + str(interface_saddrs))
+
+process1 = subprocess.Popen(['/opt/nne/udpping', '-i 10302', '-s ' + interface_saddrs[0]])
+process1.wait()
+exit()
 
 
 NODEID_FILE = '/nodeid'
-CONFIG_FILE  = '/monroe/config'
-LOG_DIRECTORY  = '/monroe/results/log'
+#CONFIG_FILE  = '/nne/config'
+LOG_DIRECTORY  = '/nne/results/log'
 
 
 # ====== Check node ID ======================================================
