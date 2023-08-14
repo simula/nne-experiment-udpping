@@ -61,7 +61,9 @@ RTT_VALID_MAX   = 300    # Maximum valid RTT (in s)
 PAYLOAD_MAX     = 2048   # Maximum payload size (in B)
 SLEEP_ON_ERROR  = 300    # Waiting time before restarting on error (in s)
 
-DEFAULT_DADDR   = ip_address('128.39.37.70')   # Default Ping destination with UDP Echo (voyager.nntb.no)
+# DEFAULT_DADDR   = ip_address('128.39.37.70')   # Default Ping destination with UDP Echo (voyager.nntb.no)
+DEFAULT_DADDR   = ip_address('185.196.89.34')    # Default Ping destination with UDP Echo (udpping.crnalab.net)
+
 DEFAULT_DPORT   = 7      # Default destination port
 DEFAULT_PSIZE   = 20     # Default payload size
 DEFAULT_TIMEOUT = 60     # Default reply timeout (in s)
