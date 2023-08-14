@@ -30,8 +30,8 @@
 #
 # Contact: dreibh@simula.no
 
-#FROM monroe/base
-FROM debian:bookworm-slim
+FROM crnaeng/base:core
+# FROM debian:bookworm-slim
 
 MAINTAINER dreibh@simula.no
 
