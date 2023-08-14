@@ -30,7 +30,8 @@
 #
 # Contact: dreibh@simula.no
 
-FROM crnaeng/base:core
+# FROM crnaeng/base:core
+FROM debian:buster-slim
 # FROM debian:bookworm-slim
 
 MAINTAINER dreibh@simula.no
