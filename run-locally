@@ -40,7 +40,7 @@ WORKDIR="/run/shm/${TESTNAME}"
 
 
 echo "Prepare:"
-rm -rf $WORKDIR
+rm -rf $WORKDIR || sudo rm -rf $WORKDIR
 mkdir -p $WORKDIR
 echo '{ "mcc": "242", "mnc": "02", "iccid": "8947080037110727061", "measurement_id": "99999", "network_id": "999" }' >$WORKDIR/config
 echo '999' >$WORKDIR/nodeid

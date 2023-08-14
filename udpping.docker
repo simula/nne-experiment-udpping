@@ -38,7 +38,7 @@ MAINTAINER dreibh@simula.no
 COPY files/* /opt/monroe/
 
 RUN apt-get update && \
-    apt-get install -y dumb-init python3 python3-netifaces python3-zmq joe less procps psmisc bash-completion && \
+    apt-get install -y bash-completion dumb-init iproute2 joe less procps psmisc python3 python3-netifaces python3-zmq && \
     echo "export TERM=vt100" >>/root/.bashrc && \
     apt-get clean
 
